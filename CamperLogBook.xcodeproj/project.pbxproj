@@ -1,0 +1,591 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		A79EA8772D58A059001C1D0B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A79EA8592D58A057001C1D0B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A79EA8602D58A057001C1D0B;
+			remoteInfo = CamperLogBook;
+		};
+		A79EA8812D58A059001C1D0B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A79EA8592D58A057001C1D0B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A79EA8602D58A057001C1D0B;
+			remoteInfo = CamperLogBook;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		A79EA8612D58A057001C1D0B /* CamperLogBook.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CamperLogBook.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A79EA8762D58A059001C1D0B /* CamperLogBookTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CamperLogBookTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CamperLogBookUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A79EA8C72D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "CamperLogBook" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"View+Keyboard.swift",
+			);
+			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		A79EA8C82D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "Copy Bundle Resources" phase from "CamperLogBook" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = A79EA85F2D58A057001C1D0B /* Resources */;
+			membershipExceptions = (
+				"View+Keyboard.swift",
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		A79EA8632D58A057001C1D0B /* CamperLogBook */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A79EA8C72D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "CamperLogBook" target */,
+				A79EA8C82D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "Copy Bundle Resources" phase from "CamperLogBook" target */,
+			);
+			path = CamperLogBook;
+			sourceTree = "<group>";
+		};
+		A79EA8792D58A059001C1D0B /* CamperLogBookTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CamperLogBookTests;
+			sourceTree = "<group>";
+		};
+		A79EA8832D58A059001C1D0B /* CamperLogBookUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CamperLogBookUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A79EA85E2D58A057001C1D0B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A79EA8732D58A059001C1D0B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A79EA87D2D58A059001C1D0B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A79EA8582D58A057001C1D0B = {
+			isa = PBXGroup;
+			children = (
+				A79EA8632D58A057001C1D0B /* CamperLogBook */,
+				A79EA8792D58A059001C1D0B /* CamperLogBookTests */,
+				A79EA8832D58A059001C1D0B /* CamperLogBookUITests */,
+				A79EA8622D58A057001C1D0B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A79EA8622D58A057001C1D0B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A79EA8612D58A057001C1D0B /* CamperLogBook.app */,
+				A79EA8762D58A059001C1D0B /* CamperLogBookTests.xctest */,
+				A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A79EA8602D58A057001C1D0B /* CamperLogBook */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A79EA88A2D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBook" */;
+			buildPhases = (
+				A79EA85D2D58A057001C1D0B /* Sources */,
+				A79EA85E2D58A057001C1D0B /* Frameworks */,
+				A79EA85F2D58A057001C1D0B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A79EA8632D58A057001C1D0B /* CamperLogBook */,
+			);
+			name = CamperLogBook;
+			packageProductDependencies = (
+			);
+			productName = CamperLogBook;
+			productReference = A79EA8612D58A057001C1D0B /* CamperLogBook.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A79EA8752D58A059001C1D0B /* CamperLogBookTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A79EA88D2D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookTests" */;
+			buildPhases = (
+				A79EA8722D58A059001C1D0B /* Sources */,
+				A79EA8732D58A059001C1D0B /* Frameworks */,
+				A79EA8742D58A059001C1D0B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A79EA8782D58A059001C1D0B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A79EA8792D58A059001C1D0B /* CamperLogBookTests */,
+			);
+			name = CamperLogBookTests;
+			packageProductDependencies = (
+			);
+			productName = CamperLogBookTests;
+			productReference = A79EA8762D58A059001C1D0B /* CamperLogBookTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A79EA87F2D58A059001C1D0B /* CamperLogBookUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A79EA8902D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookUITests" */;
+			buildPhases = (
+				A79EA87C2D58A059001C1D0B /* Sources */,
+				A79EA87D2D58A059001C1D0B /* Frameworks */,
+				A79EA87E2D58A059001C1D0B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A79EA8822D58A059001C1D0B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A79EA8832D58A059001C1D0B /* CamperLogBookUITests */,
+			);
+			name = CamperLogBookUITests;
+			packageProductDependencies = (
+			);
+			productName = CamperLogBookUITests;
+			productReference = A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A79EA8592D58A057001C1D0B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					A79EA8602D58A057001C1D0B = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					A79EA8752D58A059001C1D0B = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = A79EA8602D58A057001C1D0B;
+					};
+					A79EA87F2D58A059001C1D0B = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = A79EA8602D58A057001C1D0B;
+					};
+				};
+			};
+			buildConfigurationList = A79EA85C2D58A057001C1D0B /* Build configuration list for PBXProject "CamperLogBook" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A79EA8582D58A057001C1D0B;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A79EA8622D58A057001C1D0B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A79EA8602D58A057001C1D0B /* CamperLogBook */,
+				A79EA8752D58A059001C1D0B /* CamperLogBookTests */,
+				A79EA87F2D58A059001C1D0B /* CamperLogBookUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A79EA85F2D58A057001C1D0B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A79EA8742D58A059001C1D0B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A79EA87E2D58A059001C1D0B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A79EA85D2D58A057001C1D0B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A79EA8722D58A059001C1D0B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A79EA87C2D58A059001C1D0B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A79EA8782D58A059001C1D0B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
+			targetProxy = A79EA8772D58A059001C1D0B /* PBXContainerItemProxy */;
+		};
+		A79EA8822D58A059001C1D0B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
+			targetProxy = A79EA8812D58A059001C1D0B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A79EA8882D58A059001C1D0B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A79EA8892D58A059001C1D0B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A79EA88B2D58A059001C1D0B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
+				DEVELOPMENT_TEAM = T5A3ZR4938;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Camper Log Book";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A79EA88C2D58A059001C1D0B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
+				DEVELOPMENT_TEAM = T5A3ZR4938;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Camper Log Book";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A79EA88E2D58A059001C1D0B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T5A3ZR4938;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CamperLogBook.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CamperLogBook";
+			};
+			name = Debug;
+		};
+		A79EA88F2D58A059001C1D0B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T5A3ZR4938;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CamperLogBook.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CamperLogBook";
+			};
+			name = Release;
+		};
+		A79EA8912D58A059001C1D0B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T5A3ZR4938;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CamperLogBook;
+			};
+			name = Debug;
+		};
+		A79EA8922D58A059001C1D0B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T5A3ZR4938;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CamperLogBook;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A79EA85C2D58A057001C1D0B /* Build configuration list for PBXProject "CamperLogBook" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A79EA8882D58A059001C1D0B /* Debug */,
+				A79EA8892D58A059001C1D0B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A79EA88A2D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBook" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A79EA88B2D58A059001C1D0B /* Debug */,
+				A79EA88C2D58A059001C1D0B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A79EA88D2D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A79EA88E2D58A059001C1D0B /* Debug */,
+				A79EA88F2D58A059001C1D0B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A79EA8902D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A79EA8912D58A059001C1D0B /* Debug */,
+				A79EA8922D58A059001C1D0B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A79EA8592D58A057001C1D0B /* Project object */;
+}
