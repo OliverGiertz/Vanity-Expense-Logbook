@@ -33,6 +33,7 @@
 		A79EA8C72D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "CamperLogBook" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Info.plist,
 				"View+Keyboard.swift",
 			);
 			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
@@ -423,7 +424,7 @@
 				DEVELOPMENT_TEAM = T5A3ZR4938;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				"INFOPLIST_FILE[sdk=*]" = "Privacy - Location When In Use Usage Description";
+				INFOPLIST_FILE = CamperLogBook/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Camper Log Book";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Diese App benötigt Ihren Standort, um Ihre Einträge korrekt zu verorten.";
@@ -456,7 +457,7 @@
 				DEVELOPMENT_TEAM = T5A3ZR4938;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				"INFOPLIST_FILE[sdk=*]" = "Privacy - Location When In Use Usage Description";
+				INFOPLIST_FILE = CamperLogBook/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Camper Log Book";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Diese App benötigt Ihren Standort, um Ihre Einträge korrekt zu verorten.";
