@@ -1,11 +1,9 @@
 import SwiftUI
 import CoreData
 import PhotosUI
-import CoreLocation
 
 struct OtherEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @EnvironmentObject var locationManager: LocationManager
 
     @State private var date = Date()
     @State private var selectedCategory: String = ""
@@ -73,13 +71,7 @@ struct OtherEntryForm: View {
                         .onSubmit { focusedField = nil }
                 }
                 
-                Section(header: Text("Standort")) {
-                    if let location = locationManager.lastLocation {
-                        Text("Lat: \(location.coordinate.latitude), Lon: \(location.coordinate.longitude)")
-                    } else {
-                        Text("Standort wird ermittelt...")
-                    }
-                }
+                // Der Standort wird in dieser Ansicht nicht abgefragt.
                 
                 Section(header: Text("Beleg (Bild/PDF)")) {
                     if let image = receiptImage {
@@ -129,13 +121,6 @@ struct OtherEntryForm: View {
         let costText = cost.replacingOccurrences(of: ",", with: ".")
         guard let costValue = Double(costText) else { return }
         
-        let chosenLocation: CLLocation
-        if let autoLocation = locationManager.lastLocation {
-            chosenLocation = autoLocation
-        } else {
-            chosenLocation = CLLocation(latitude: 0, longitude: 0)
-        }
-        
         let categoryToSave: String
         if selectedCategory == "Neu" {
             let trimmed = customCategory.trimmingCharacters(in: .whitespaces)
@@ -155,8 +140,7 @@ struct OtherEntryForm: View {
         newEntry.category = categoryToSave
         newEntry.details = details
         newEntry.cost = costValue
-        newEntry.latitude = chosenLocation.coordinate.latitude
-        newEntry.longitude = chosenLocation.coordinate.longitude
+        // Standort wird hier nicht gespeichert.
         if let image = receiptImage {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
         }
@@ -184,6 +168,5 @@ struct OtherEntryForm_Previews: PreviewProvider {
     static var previews: some View {
         OtherEntryForm()
             .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
-            .environmentObject(LocationManager())
     }
 }

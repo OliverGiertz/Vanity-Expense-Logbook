@@ -31,6 +31,8 @@ public class GasEntry: NSManagedObject, Identifiable {
     @NSManaged public var costPerBottle: Double
     @NSManaged public var bottleCount: Int64
     @NSManaged public var receiptData: Data?
+    @NSManaged public var latitude: Double
+    @NSManaged public var longitude: Double
 }
 
 extension GasEntry {
@@ -47,8 +49,6 @@ public class ServiceEntry: NSManagedObject, Identifiable {
     @NSManaged public var date: Date
     @NSManaged public var isSupply: Bool
     @NSManaged public var isDisposal: Bool
-    // Wenn entweder nur Supply oder Disposal gewählt wird, wird in "cost" der entsprechende Wert gespeichert;
-    // wenn beide gewählt sind, wird nur der Gesamtkostenwert in "cost" erfasst.
     @NSManaged public var cost: Double
     @NSManaged public var latitude: Double
     @NSManaged public var longitude: Double

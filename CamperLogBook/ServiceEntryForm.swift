@@ -13,6 +13,9 @@ struct ServiceEntryForm: View {
     @State private var cost: String = ""
     @State private var receiptImage: UIImage?
     @State private var photoPickerItem: PhotosPickerItem?
+    
+    @State private var selectedLocation: CLLocationCoordinate2D? = nil
+    @State private var showLocationPicker: Bool = false
 
     var body: some View {
         NavigationView {
@@ -33,10 +36,15 @@ struct ServiceEntryForm: View {
                         .onSubmit { hideKeyboard() }
                 }
                 Section(header: Text("Standort")) {
-                    if let location = locationManager.lastLocation {
-                        Text("Lat: \(location.coordinate.latitude), Lon: \(location.coordinate.longitude)")
+                    if let autoLocation = locationManager.lastLocation {
+                        Text("Automatisch ermittelt: Lat: \(autoLocation.coordinate.latitude), Lon: \(autoLocation.coordinate.longitude)")
+                    } else if let manualLocation = selectedLocation {
+                        Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
                     } else {
-                        Text("Standort wird ermittelt...")
+                        Text("Kein Standort ermittelt")
+                        Button("Standort manuell auswählen") {
+                            showLocationPicker = true
+                        }
                     }
                 }
                 Section(header: Text("Beleg (Bild/PDF)")) {
@@ -65,11 +73,15 @@ struct ServiceEntryForm: View {
                 }
             }
             .navigationTitle("Ver-/Entsorgung")
+            .sheet(isPresented: $showLocationPicker) {
+                NavigationView {
+                    LocationPickerView(selectedCoordinate: $selectedLocation)
+                }
+            }
         }
     }
     
     private func saveEntry() {
-        // Ersetze Komma durch Punkt für die Konvertierung, z. B. "1,50" -> "1.50"
         guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else {
             print("Kostenkonvertierung fehlgeschlagen.")
             return
@@ -77,8 +89,11 @@ struct ServiceEntryForm: View {
         let chosenLocation: CLLocation
         if let autoLocation = locationManager.lastLocation {
             chosenLocation = autoLocation
+        } else if let manualLocation = selectedLocation {
+            chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
         } else {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
+            print("Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet")
         }
         let newEntry = ServiceEntry(context: viewContext)
         newEntry.id = UUID()
@@ -107,6 +122,7 @@ struct ServiceEntryForm: View {
         cost = ""
         receiptImage = nil
         photoPickerItem = nil
+        selectedLocation = nil
     }
 }
 
