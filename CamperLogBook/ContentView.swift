@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @AppStorage("showStartInfo") var showStartInfo: Bool = true
+    
     var body: some View {
         TabView {
             OverviewView()
@@ -27,6 +29,9 @@ struct ContentView: View {
                 Label("Debug", systemImage: "ladybug.fill")
             }
             #endif
+        }
+        .fullScreenCover(isPresented: $showStartInfo) {
+            StartInfoView()
         }
     }
 }

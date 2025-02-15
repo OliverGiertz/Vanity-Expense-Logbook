@@ -3,6 +3,7 @@ import CoreData
 
 struct ProfileView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @AppStorage("showStartInfo") var showStartInfo: Bool = true
     
     // Fahrzeugprofil (angenommen, es gibt nur ein Profil)
     @FetchRequest(
@@ -26,6 +27,18 @@ struct ProfileView: View {
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("App-Informationen")) {
+                    if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+                        if let releaseDate = Bundle.main.infoDictionary?["CFBundleReleaseDate"] as? String {
+                            Text("Version \(version) (\(releaseDate))")
+                        } else {
+                            Text("Version \(version)")
+                        }
+                    } else {
+                        Text("Version nicht verfügbar")
+                    }
+                }
+                
                 Section(header: Text("Fahrzeugdaten")) {
                     TextField("KFZ Kennzeichen", text: $licensePlate)
                     TextField("Automarke", text: $brand)
@@ -51,6 +64,10 @@ struct ProfileView: View {
                         }
                         .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
+                }
+                
+                Section(header: Text("Startseiten-Einstellungen")) {
+                    Toggle("Startseite beim App-Start anzeigen", isOn: $showStartInfo)
                 }
             }
             .navigationTitle("Profil")
