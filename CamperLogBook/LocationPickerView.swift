@@ -1,8 +1,9 @@
 import SwiftUI
 import MapKit
 
-extension CLLocationCoordinate2D: Identifiable {
-    public var id: String { "\(latitude),\(longitude)" }
+struct IdentifiableCoordinate: Identifiable {
+    let coordinate: CLLocationCoordinate2D
+    var id: String { "\(coordinate.latitude),\(coordinate.longitude)" }
 }
 
 struct LocationPickerView: View {
@@ -16,8 +17,8 @@ struct LocationPickerView: View {
     )
 
     var body: some View {
-        Map(coordinateRegion: $region, annotationItems: [region.center]) { coordinate in
-            MapMarker(coordinate: coordinate, tint: .red)
+        Map(coordinateRegion: $region, annotationItems: [IdentifiableCoordinate(coordinate: region.center)]) { item in
+            MapMarker(coordinate: item.coordinate, tint: .red)
         }
         .frame(height: 300)
         .overlay(

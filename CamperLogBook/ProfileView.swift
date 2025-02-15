@@ -4,7 +4,7 @@ import CoreData
 struct ProfileView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @AppStorage("showStartInfo") var showStartInfo: Bool = true
-    
+
     // Fahrzeugprofil (angenommen, es gibt nur ein Profil)
     @FetchRequest(
         entity: VehicleProfile.entity(),
@@ -68,6 +68,12 @@ struct ProfileView: View {
                 
                 Section(header: Text("Startseiten-Einstellungen")) {
                     Toggle("Startseite beim App-Start anzeigen", isOn: $showStartInfo)
+                }
+                
+                Section(header: Text("Datenimport/-export")) {
+                    NavigationLink(destination: ImportExportView()) {
+                        Text("CSV Import/Export")
+                    }
                 }
             }
             .navigationTitle("Profil")

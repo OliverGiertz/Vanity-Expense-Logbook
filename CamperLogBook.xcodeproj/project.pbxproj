@@ -127,7 +127,6 @@
 				A79EA85D2D58A057001C1D0B /* Sources */,
 				A79EA85E2D58A057001C1D0B /* Frameworks */,
 				A79EA85F2D58A057001C1D0B /* Resources */,
-				A7519E4A2D60F9BA00CD8358 /* Set Build Number */,
 			);
 			buildRules = (
 			);
@@ -256,27 +255,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		A7519E4A2D60F9BA00CD8358 /* Set Build Number */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Set Build Number";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "git=`sh /etc/profile; which git`\nbundleVersion=`\"$git\" log --pretty=oneline HEAD^@ |wc -l`\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $bundleVersion\" \"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n\necho \"Updated build number in ${TARGET_BUILD_DIR}/${INFOPLIST_PATH} to $bundleVersion\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A79EA85D2D58A057001C1D0B /* Sources */ = {
@@ -441,7 +419,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.6.4;
 				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
 				DEVELOPMENT_TEAM = T5A3ZR4938;
 				ENABLE_PREVIEWS = YES;
@@ -459,7 +437,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 2.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -474,7 +452,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.6.4;
 				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
 				DEVELOPMENT_TEAM = T5A3ZR4938;
 				ENABLE_PREVIEWS = YES;
@@ -492,7 +470,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.4;
+				MARKETING_VERSION = 2.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
