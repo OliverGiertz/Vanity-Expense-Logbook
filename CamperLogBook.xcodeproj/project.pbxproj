@@ -70,11 +70,6 @@
 			path = CamperLogBookUITests;
 			sourceTree = "<group>";
 		};
-		A7C76CB42D60F2F000F06AD3 /* Scipts */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Scipts;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,7 +100,6 @@
 		A79EA8582D58A057001C1D0B = {
 			isa = PBXGroup;
 			children = (
-				A7C76CB42D60F2F000F06AD3 /* Scipts */,
 				A79EA8632D58A057001C1D0B /* CamperLogBook */,
 				A79EA8792D58A059001C1D0B /* CamperLogBookTests */,
 				A79EA8832D58A059001C1D0B /* CamperLogBookUITests */,
@@ -133,7 +127,7 @@
 				A79EA85D2D58A057001C1D0B /* Sources */,
 				A79EA85E2D58A057001C1D0B /* Frameworks */,
 				A79EA85F2D58A057001C1D0B /* Resources */,
-				A7C76CB92D60F39B00F06AD3 /* Override Build Version */,
+				A7519E4A2D60F9BA00CD8358 /* Set Build Number */,
 			);
 			buildRules = (
 			);
@@ -141,7 +135,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				A79EA8632D58A057001C1D0B /* CamperLogBook */,
-				A7C76CB42D60F2F000F06AD3 /* Scipts */,
 			);
 			name = CamperLogBook;
 			packageProductDependencies = (
@@ -265,9 +258,8 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		A7C76CB92D60F39B00F06AD3 /* Override Build Version */ = {
+		A7519E4A2D60F9BA00CD8358 /* Set Build Number */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -275,14 +267,14 @@
 			);
 			inputPaths = (
 			);
-			name = "Override Build Version";
+			name = "Set Build Number";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"SRCROOT\" /Scripts/sync_git_tag.sh\n\"SRCROOT\" /Scripts/sync_git_build.sh\n";
+			shellScript = "git=`sh /etc/profile; which git`\nbundleVersion=`\"$git\" log --pretty=oneline HEAD^@ |wc -l`\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $bundleVersion\" \"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n\necho \"Updated build number in ${TARGET_BUILD_DIR}/${INFOPLIST_PATH} to $bundleVersion\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -467,7 +459,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.2;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -500,7 +492,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.2;
+				MARKETING_VERSION = 1.6.3;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
