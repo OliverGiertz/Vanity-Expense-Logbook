@@ -3,6 +3,8 @@ import CoreData
 import PhotosUI
 import CoreLocation
 
+// Keine lokale hideKeyboard()-Definition!
+
 struct ServiceEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var locationManager: LocationManager

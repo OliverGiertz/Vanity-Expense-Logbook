@@ -1,8 +1,10 @@
 import SwiftUI
+import UIKit
 import CoreData
 import PhotosUI
 import CoreLocation
 
+// Globale Erweiterung, falls sie noch nicht in deinem Projekt vorhanden ist:
 extension View {
     func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
@@ -13,7 +15,7 @@ extension View {
 struct FuelEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var locationManager: LocationManager
-
+    
     @State private var date = Date()
     @State private var isDiesel: Bool = true
     @State private var isAdBlue: Bool = false
@@ -22,15 +24,21 @@ struct FuelEntryForm: View {
     @State private var costPerLiter: String = ""
     @State private var totalCost: String = "0,00"
     @State private var receiptImage: UIImage?
-    @State private var photoPickerItem: PhotosPickerItem?
-
+    @State private var pdfData: Data?
+    
     @State private var kmDifference: Int64?
     @State private var consumptionPer100km: Double?
-
+    
     @State private var errorMessage: String?
-
+    
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
     @State private var showLocationPicker: Bool = false
+    
+    // Neue Zustände für Belegquelle
+    @State private var showingReceiptOptions = false
+    @State private var showingPhotoPicker = false
+    @State private var showingPDFPicker = false
+    @State private var showingScanner = false
 
     var body: some View {
         NavigationView {
@@ -41,7 +49,6 @@ struct FuelEntryForm: View {
                         .onSubmit { hideKeyboard() }
                 }
                 Section(header: Text("Kraftstoffauswahl")) {
-                    // Beide Toggle aktiv – Diesel ist jetzt abwählbar.
                     Toggle("Diesel", isOn: $isDiesel)
                     Toggle("AdBlue", isOn: $isAdBlue)
                 }
@@ -82,19 +89,20 @@ struct FuelEntryForm: View {
                             .resizable()
                             .scaledToFit()
                             .frame(height: 150)
+                    } else if pdfData != nil {
+                        Image(systemName: "doc.richtext")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 150)
                     }
-                    PhotosPicker(selection: $photoPickerItem, matching: .images, photoLibrary: .shared()) {
-                        Text("Beleg auswählen")
+                    Button("Beleg auswählen") {
+                        showingReceiptOptions = true
                     }
-                    .onChange(of: photoPickerItem) { _, _ in
-                        if let newItem = photoPickerItem {
-                            Task {
-                                if let data = try? await newItem.loadTransferable(type: Data.self),
-                                   let uiImage = UIImage(data: data) {
-                                    receiptImage = uiImage
-                                }
-                            }
-                        }
+                    .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
+                        Button("Aus Fotos wählen") { showingPhotoPicker = true }
+                        Button("Aus Dateien (PDF) wählen") { showingPDFPicker = true }
+                        Button("Kamera Scannen") { showingScanner = true }
+                        Button("Abbrechen", role: .cancel) { }
                     }
                 }
                 if let kmDiff = kmDifference, let consumption = consumptionPer100km {
@@ -104,10 +112,7 @@ struct FuelEntryForm: View {
                     }
                 }
                 if let error = errorMessage {
-                    Section {
-                        Text(error)
-                            .foregroundColor(.red)
-                    }
+                    Section { Text(error).foregroundColor(.red) }
                 }
                 Button("Speichern") { saveEntry() }
             }
@@ -115,9 +120,35 @@ struct FuelEntryForm: View {
             .sheet(isPresented: $showLocationPicker) {
                 NavigationView { LocationPickerView(selectedCoordinate: $selectedLocation) }
             }
+            .sheet(isPresented: $showingPhotoPicker) {
+                PhotoPickerView { image in
+                    if let img = image {
+                        receiptImage = img
+                        pdfData = nil
+                    }
+                }
+            }
+            .sheet(isPresented: $showingPDFPicker) {
+                PDFDocumentPicker { url in
+                    if let url = url, let data = try? Data(contentsOf: url) {
+                        pdfData = data
+                        receiptImage = nil
+                    }
+                }
+            }
+            .sheet(isPresented: $showingScanner) {
+                DocumentScannerView { images in
+                    if !images.isEmpty {
+                        if let pdf = PDFCreator.createPDF(from: images) {
+                            pdfData = pdf
+                            receiptImage = nil
+                        }
+                    }
+                }
+            }
         }
     }
-
+    
     private func computeTotalCost() {
         if let litersValue = Double(liters.replacingOccurrences(of: ",", with: ".")),
            let costValue = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")) {
@@ -127,7 +158,7 @@ struct FuelEntryForm: View {
             totalCost = "0,00"
         }
     }
-
+    
     private func updateKmDifference() {
         guard let currentKmValue = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) else {
             kmDifference = nil
@@ -157,7 +188,7 @@ struct FuelEntryForm: View {
             consumptionPer100km = nil
         }
     }
-
+    
     private func saveEntry() {
         errorMessage = nil
         guard let currentKmValue = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) else {
@@ -200,8 +231,12 @@ struct FuelEntryForm: View {
         newEntry.totalCost = totalCostValue
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
-        if let image = receiptImage {
+        if let pdfData = pdfData {
+            newEntry.receiptData = pdfData
+            newEntry.receiptType = "pdf"
+        } else if let image = receiptImage {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+            newEntry.receiptType = "image"
         }
         let fetchRequest = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
@@ -228,7 +263,7 @@ struct FuelEntryForm: View {
             print(errorMessage!)
         }
     }
-
+    
     private func clearFields() {
         date = Date()
         isAdBlue = false
@@ -237,6 +272,7 @@ struct FuelEntryForm: View {
         costPerLiter = ""
         totalCost = "0,00"
         receiptImage = nil
+        pdfData = nil
         selectedLocation = nil
     }
 }

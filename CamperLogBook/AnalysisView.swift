@@ -42,8 +42,8 @@ struct AnalysisView: View {
                     DatePicker("Bis", selection: $endDate, displayedComponents: .date)
                 }
                 .padding(.horizontal)
-                .onChange(of: startDate, perform: { _ in loadData() })
-                .onChange(of: endDate, perform: { _ in loadData() })
+                .onChange(of: startDate) { _ in loadData() }
+                .onChange(of: endDate) { _ in loadData() }
                 
                 // Kostentyp-Auswahl
                 ScrollView(.horizontal, showsIndicators: false) {

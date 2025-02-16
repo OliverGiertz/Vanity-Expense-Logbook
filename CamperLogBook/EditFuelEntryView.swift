@@ -16,6 +16,13 @@ struct EditFuelEntryView: View {
     @State private var costPerLiter: String
     @State private var totalCost: String
     @State private var receiptImage: UIImage?
+    @State private var pdfData: Data?
+    
+    // Zustände für die Belegquelle
+    @State private var showingReceiptOptions = false
+    @State private var showingPhotoPicker = false
+    @State private var showingPDFPicker = false
+    @State private var showingScanner = false
 
     init(fuelEntry: FuelEntry) {
         self.fuelEntry = fuelEntry
@@ -26,10 +33,13 @@ struct EditFuelEntryView: View {
         _liters = State(initialValue: String(fuelEntry.liters))
         _costPerLiter = State(initialValue: String(fuelEntry.costPerLiter))
         _totalCost = State(initialValue: String(fuelEntry.totalCost))
-        if let data = fuelEntry.receiptData, let image = UIImage(data: data) {
+        if fuelEntry.receiptType == "image", let data = fuelEntry.receiptData, let image = UIImage(data: data) {
             _receiptImage = State(initialValue: image)
+        } else if fuelEntry.receiptType == "pdf", let data = fuelEntry.receiptData {
+            _pdfData = State(initialValue: data)
         } else {
             _receiptImage = State(initialValue: nil)
+            _pdfData = State(initialValue: nil)
         }
     }
 
@@ -38,9 +48,9 @@ struct EditFuelEntryView: View {
             Section(header: Text("Datum")) {
                 DatePicker("Datum", selection: $date, displayedComponents: .date)
                     .submitLabel(.done)
+                    .onSubmit { hideKeyboard() }
             }
             Section(header: Text("Kraftstoffauswahl")) {
-                // Beide Toggle aktiv – Diesel kann abgewählt werden
                 Toggle("Diesel", isOn: $isDiesel)
                 Toggle("AdBlue", isOn: $isAdBlue)
             }
@@ -56,6 +66,28 @@ struct EditFuelEntryView: View {
                 TextField("Gesamtkosten", text: $totalCost)
                     .disabled(true)
             }
+            Section(header: Text("Beleg (Bild/PDF)")) {
+                if let image = receiptImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 150)
+                } else if pdfData != nil {
+                    Image(systemName: "doc.richtext")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 150)
+                }
+                Button("Beleg ändern") {
+                    showingReceiptOptions = true
+                }
+                .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
+                    Button("Aus Fotos wählen") { showingPhotoPicker = true }
+                    Button("Aus Dateien (PDF) wählen") { showingPDFPicker = true }
+                    Button("Kamera Scannen") { showingScanner = true }
+                    Button("Abbrechen", role: .cancel) { }
+                }
+            }
             Button("Änderungen speichern") {
                 saveChanges()
             }
@@ -68,8 +100,34 @@ struct EditFuelEntryView: View {
             }
         }
         .navigationTitle("Eintrag bearbeiten")
+        .sheet(isPresented: $showingPhotoPicker) {
+            PhotoPickerView { image in
+                if let img = image {
+                    receiptImage = img
+                    pdfData = nil
+                }
+            }
+        }
+        .sheet(isPresented: $showingPDFPicker) {
+            PDFDocumentPicker { url in
+                if let url = url, let data = try? Data(contentsOf: url) {
+                    pdfData = data
+                    receiptImage = nil
+                }
+            }
+        }
+        .sheet(isPresented: $showingScanner) {
+            DocumentScannerView { images in
+                if !images.isEmpty {
+                    if let pdf = PDFCreator.createPDF(from: images) {
+                        pdfData = pdf
+                        receiptImage = nil
+                    }
+                }
+            }
+        }
     }
-
+    
     private func saveChanges() {
         guard let currentKmValue = Int64(currentKm),
               let litersValue = Double(liters),
@@ -84,8 +142,12 @@ struct EditFuelEntryView: View {
         fuelEntry.liters = litersValue
         fuelEntry.costPerLiter = costValue
         fuelEntry.totalCost = computedTotal
-        if let image = receiptImage {
+        if let pdfData = pdfData {
+            fuelEntry.receiptData = pdfData
+            fuelEntry.receiptType = "pdf"
+        } else if let image = receiptImage {
             fuelEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+            fuelEntry.receiptType = "image"
         }
         do {
             try viewContext.save()
@@ -94,7 +156,7 @@ struct EditFuelEntryView: View {
             print("Fehler beim Speichern: \(error)")
         }
     }
-
+    
     private func deleteEntry() {
         viewContext.delete(fuelEntry)
         do {
@@ -118,6 +180,8 @@ struct EditFuelEntryView_Previews: PreviewProvider {
         entry.liters = 50.0
         entry.costPerLiter = 1.5
         entry.totalCost = 75.0
+        entry.receiptType = "image"
+        entry.receiptData = UIImage(systemName: "fuelpump")?.jpegData(compressionQuality: 0.8)
         return NavigationView {
             EditFuelEntryView(fuelEntry: entry)
         }

@@ -14,6 +14,8 @@ public class FuelEntry: NSManagedObject, Identifiable {
     @NSManaged public var latitude: Double
     @NSManaged public var longitude: Double
     @NSManaged public var receiptData: Data?
+    // Neues Attribut, um den Belegtyp zu unterscheiden ("image" oder "pdf")
+    @NSManaged public var receiptType: String?
 }
 
 extension FuelEntry {
@@ -31,6 +33,8 @@ public class GasEntry: NSManagedObject, Identifiable {
     @NSManaged public var costPerBottle: Double
     @NSManaged public var bottleCount: Int64
     @NSManaged public var receiptData: Data?
+    // Neues Attribut, um den Belegtyp zu unterscheiden ("image" oder "pdf")
+    @NSManaged public var receiptType: String?
     @NSManaged public var latitude: Double
     @NSManaged public var longitude: Double
 }
@@ -73,6 +77,8 @@ public class OtherEntry: NSManagedObject, Identifiable {
     @NSManaged public var latitude: Double
     @NSManaged public var longitude: Double
     @NSManaged public var receiptData: Data?
+    // Neues Attribut, um den Belegtyp zu unterscheiden ("image" oder "pdf")
+    @NSManaged public var receiptType: String?
 }
 
 extension OtherEntry {

@@ -1,7 +1,10 @@
 import SwiftUI
+import UIKit
 import CoreData
 import PhotosUI
 import CoreLocation
+
+// Bitte keine lokale hideKeyboard()-Definition – die globale Version (in View+Keyboard.swift) wird verwendet.
 
 struct GasEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -11,10 +14,16 @@ struct GasEntryForm: View {
     @State private var costPerBottle: String = ""
     @State private var bottleCount: String = ""
     @State private var receiptImage: UIImage?
-    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var pdfData: Data?
     
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
     @State private var showLocationPicker: Bool = false
+    
+    // Receipt options
+    @State private var showingReceiptOptions = false
+    @State private var showingPhotoPicker = false
+    @State private var showingPDFPicker = false
+    @State private var showingScanner = false
 
     var body: some View {
         NavigationView {
@@ -52,19 +61,20 @@ struct GasEntryForm: View {
                             .resizable()
                             .scaledToFit()
                             .frame(height: 150)
+                    } else if pdfData != nil {
+                        Image(systemName: "doc.richtext")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 150)
                     }
-                    PhotosPicker(selection: $photoPickerItem, matching: .images, photoLibrary: .shared()) {
-                        Text("Beleg auswählen")
+                    Button("Beleg auswählen") {
+                        showingReceiptOptions = true
                     }
-                    .onChange(of: photoPickerItem) { _, _ in
-                        if let newItem = photoPickerItem {
-                            Task {
-                                if let data = try? await newItem.loadTransferable(type: Data.self),
-                                   let uiImage = UIImage(data: data) {
-                                    receiptImage = uiImage
-                                }
-                            }
-                        }
+                    .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
+                        Button("Aus Fotos wählen") { showingPhotoPicker = true }
+                        Button("Aus Dateien (PDF) wählen") { showingPDFPicker = true }
+                        Button("Kamera Scannen") { showingScanner = true }
+                        Button("Abbrechen", role: .cancel) { }
                     }
                 }
                 Button("Speichern") {
@@ -75,6 +85,32 @@ struct GasEntryForm: View {
             .sheet(isPresented: $showLocationPicker) {
                 NavigationView {
                     LocationPickerView(selectedCoordinate: $selectedLocation)
+                }
+            }
+            .sheet(isPresented: $showingPhotoPicker) {
+                PhotoPickerView { image in
+                    if let img = image {
+                        receiptImage = img
+                        pdfData = nil
+                    }
+                }
+            }
+            .sheet(isPresented: $showingPDFPicker) {
+                PDFDocumentPicker { url in
+                    if let url = url, let data = try? Data(contentsOf: url) {
+                        pdfData = data
+                        receiptImage = nil
+                    }
+                }
+            }
+            .sheet(isPresented: $showingScanner) {
+                DocumentScannerView { images in
+                    if !images.isEmpty {
+                        if let pdf = PDFCreator.createPDF(from: images) {
+                            pdfData = pdf
+                            receiptImage = nil
+                        }
+                    }
                 }
             }
         }
@@ -103,8 +139,12 @@ struct GasEntryForm: View {
         newEntry.bottleCount = count
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
-        if let image = receiptImage {
+        if let pdfData = pdfData {
+            newEntry.receiptData = pdfData
+            newEntry.receiptType = "pdf"
+        } else if let image = receiptImage {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+            newEntry.receiptType = "image"
         }
         do {
             try viewContext.save()
@@ -120,7 +160,7 @@ struct GasEntryForm: View {
         costPerBottle = ""
         bottleCount = ""
         receiptImage = nil
-        photoPickerItem = nil
+        pdfData = nil
         selectedLocation = nil
     }
 }

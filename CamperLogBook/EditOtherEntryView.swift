@@ -11,6 +11,14 @@ struct EditOtherEntryView: View {
     @State private var category: String
     @State private var details: String
     @State private var cost: String
+    @State private var receiptImage: UIImage?
+    @State private var pdfData: Data?
+    
+    // Receipt options
+    @State private var showingReceiptOptions = false
+    @State private var showingPhotoPicker = false
+    @State private var showingPDFPicker = false
+    @State private var showingScanner = false
 
     init(otherEntry: OtherEntry) {
         self.otherEntry = otherEntry
@@ -18,6 +26,14 @@ struct EditOtherEntryView: View {
         _category = State(initialValue: otherEntry.category)
         _details = State(initialValue: otherEntry.details ?? "")
         _cost = State(initialValue: String(otherEntry.cost))
+        if otherEntry.receiptType == "image", let data = otherEntry.receiptData, let image = UIImage(data: data) {
+            _receiptImage = State(initialValue: image)
+        } else if otherEntry.receiptType == "pdf", let data = otherEntry.receiptData {
+            _pdfData = State(initialValue: data)
+        } else {
+            _receiptImage = State(initialValue: nil)
+            _pdfData = State(initialValue: nil)
+        }
     }
 
     var body: some View {
@@ -36,6 +52,28 @@ struct EditOtherEntryView: View {
                     .keyboardType(.decimalPad)
                     .submitLabel(.done)
             }
+            Section(header: Text("Beleg (Bild/PDF)")) {
+                if let image = receiptImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 150)
+                } else if pdfData != nil {
+                    Image(systemName: "doc.richtext")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 150)
+                }
+                Button("Beleg ändern") {
+                    showingReceiptOptions = true
+                }
+                .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
+                    Button("Aus Fotos wählen") { showingPhotoPicker = true }
+                    Button("Aus Dateien (PDF) wählen") { showingPDFPicker = true }
+                    Button("Kamera Scannen") { showingScanner = true }
+                    Button("Abbrechen", role: .cancel) { }
+                }
+            }
             Button("Speichern") {
                 saveChanges()
             }
@@ -48,6 +86,32 @@ struct EditOtherEntryView: View {
             }
         }
         .navigationTitle("Sonstiger Beleg bearbeiten")
+        .sheet(isPresented: $showingPhotoPicker) {
+            PhotoPickerView { image in
+                if let img = image {
+                    receiptImage = img
+                    pdfData = nil
+                }
+            }
+        }
+        .sheet(isPresented: $showingPDFPicker) {
+            PDFDocumentPicker { url in
+                if let url = url, let data = try? Data(contentsOf: url) {
+                    pdfData = data
+                    receiptImage = nil
+                }
+            }
+        }
+        .sheet(isPresented: $showingScanner) {
+            DocumentScannerView { images in
+                if !images.isEmpty {
+                    if let pdf = PDFCreator.createPDF(from: images) {
+                        pdfData = pdf
+                        receiptImage = nil
+                    }
+                }
+            }
+        }
     }
 
     private func saveChanges() {
@@ -56,6 +120,13 @@ struct EditOtherEntryView: View {
         otherEntry.category = category
         otherEntry.details = details
         otherEntry.cost = costValue
+        if let pdfData = pdfData {
+            otherEntry.receiptData = pdfData
+            otherEntry.receiptType = "pdf"
+        } else if let image = receiptImage {
+            otherEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+            otherEntry.receiptType = "image"
+        }
         do {
             try viewContext.save()
             dismiss()
@@ -84,6 +155,8 @@ struct EditOtherEntryView_Previews: PreviewProvider {
         entry.category = "Ausstattung"
         entry.details = "Beispieltext"
         entry.cost = 25.0
+        entry.receiptType = "image"
+        entry.receiptData = UIImage(systemName: "doc")?.jpegData(compressionQuality: 0.8)
         return NavigationView {
             EditOtherEntryView(otherEntry: entry)
         }
