@@ -1,6 +1,5 @@
 import SwiftUI
 import CoreData
-import PhotosUI
 
 struct EditServiceEntryView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -32,7 +31,7 @@ struct EditServiceEntryView: View {
             Section(header: Text("Datum")) {
                 DatePicker("Datum", selection: $date, displayedComponents: .date)
                     .submitLabel(.done)
-                    .onSubmit { hideKeyboard() }
+                    .onSubmit { KeyboardHelper.hideKeyboard() }
             }
             Section(header: Text("Art der Leistung")) {
                 Toggle("Ver-sorgung", isOn: $isSupply)
@@ -42,7 +41,7 @@ struct EditServiceEntryView: View {
                 TextField("Kosten", text: $cost)
                     .keyboardType(.decimalPad)
                     .submitLabel(.done)
-                    .onSubmit { hideKeyboard() }
+                    .onSubmit { KeyboardHelper.hideKeyboard() }
             }
             Button("Speichern") {
                 saveChanges()

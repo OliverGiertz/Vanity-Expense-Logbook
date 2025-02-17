@@ -14,11 +14,9 @@ struct OtherEntryForm: View {
     @State private var receiptImage: UIImage?
     @State private var pdfData: Data?
     
-    // Receipt options
+    // Zustände für die Beleg-Auswahl
     @State private var showingReceiptOptions = false
-    @State private var showingPhotoPicker = false
-    @State private var showingPDFPicker = false
-    @State private var showingScanner = false
+    @State private var receiptSource: ReceiptSource? = nil
 
     // FetchRequest zur Abfrage der vorhandenen Kategorien (ExpenseCategory)
     @FetchRequest(
@@ -46,11 +44,7 @@ struct OtherEntryForm: View {
                         Text("Neu").tag("Neu")
                     }
                     .onChange(of: selectedCategory) { newValue, _ in
-                        if newValue == "Neu" {
-                            showCustomCategoryField = true
-                        } else {
-                            showCustomCategoryField = false
-                        }
+                        showCustomCategoryField = (newValue == "Neu")
                     }
                     if showCustomCategoryField {
                         TextField("Neue Kategorie eingeben", text: $customCategory)
@@ -91,9 +85,9 @@ struct OtherEntryForm: View {
                         showingReceiptOptions = true
                     }
                     .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
-                        Button("Aus Fotos wählen") { showingPhotoPicker = true }
-                        Button("Aus Dateien (PDF) wählen") { showingPDFPicker = true }
-                        Button("Kamera Scannen") { showingScanner = true }
+                        Button("Aus Fotos wählen") { receiptSource = .photo }
+                        Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
+                        Button("Kamera Scannen") { receiptSource = .scanner }
                         Button("Abbrechen", role: .cancel) { }
                     }
                 }
@@ -114,31 +108,8 @@ struct OtherEntryForm: View {
                     selectedCategory = firstCat
                 }
             }
-            .sheet(isPresented: $showingPhotoPicker) {
-                PhotoPickerView { image in
-                    if let img = image {
-                        receiptImage = img
-                        pdfData = nil
-                    }
-                }
-            }
-            .sheet(isPresented: $showingPDFPicker) {
-                PDFDocumentPicker { url in
-                    if let url = url, let data = try? Data(contentsOf: url) {
-                        pdfData = data
-                        receiptImage = nil
-                    }
-                }
-            }
-            .sheet(isPresented: $showingScanner) {
-                DocumentScannerView { images in
-                    if !images.isEmpty {
-                        if let pdf = PDFCreator.createPDF(from: images) {
-                            pdfData = pdf
-                            receiptImage = nil
-                        }
-                    }
-                }
+            .sheet(item: $receiptSource) { source in
+                ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
             }
         }
     }

@@ -14,11 +14,9 @@ struct EditOtherEntryView: View {
     @State private var receiptImage: UIImage?
     @State private var pdfData: Data?
     
-    // Receipt options
+    // Zustände für die Beleg-Auswahl
     @State private var showingReceiptOptions = false
-    @State private var showingPhotoPicker = false
-    @State private var showingPDFPicker = false
-    @State private var showingScanner = false
+    @State private var receiptSource: ReceiptSource? = nil
 
     init(otherEntry: OtherEntry) {
         self.otherEntry = otherEntry
@@ -68,9 +66,9 @@ struct EditOtherEntryView: View {
                     showingReceiptOptions = true
                 }
                 .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
-                    Button("Aus Fotos wählen") { showingPhotoPicker = true }
-                    Button("Aus Dateien (PDF) wählen") { showingPDFPicker = true }
-                    Button("Kamera Scannen") { showingScanner = true }
+                    Button("Aus Fotos wählen") { receiptSource = .photo }
+                    Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
+                    Button("Kamera Scannen") { receiptSource = .scanner }
                     Button("Abbrechen", role: .cancel) { }
                 }
             }
@@ -86,31 +84,8 @@ struct EditOtherEntryView: View {
             }
         }
         .navigationTitle("Sonstiger Beleg bearbeiten")
-        .sheet(isPresented: $showingPhotoPicker) {
-            PhotoPickerView { image in
-                if let img = image {
-                    receiptImage = img
-                    pdfData = nil
-                }
-            }
-        }
-        .sheet(isPresented: $showingPDFPicker) {
-            PDFDocumentPicker { url in
-                if let url = url, let data = try? Data(contentsOf: url) {
-                    pdfData = data
-                    receiptImage = nil
-                }
-            }
-        }
-        .sheet(isPresented: $showingScanner) {
-            DocumentScannerView { images in
-                if !images.isEmpty {
-                    if let pdf = PDFCreator.createPDF(from: images) {
-                        pdfData = pdf
-                        receiptImage = nil
-                    }
-                }
-            }
+        .sheet(item: $receiptSource) { source in
+            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
     }
 

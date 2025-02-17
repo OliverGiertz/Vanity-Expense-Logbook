@@ -34,28 +34,16 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				"View+Keyboard.swift",
 			);
 			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		A79EA8C82D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "Copy Bundle Resources" phase from "CamperLogBook" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = A79EA85F2D58A057001C1D0B /* Resources */;
-			membershipExceptions = (
-				"View+Keyboard.swift",
-			);
-		};
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A79EA8632D58A057001C1D0B /* CamperLogBook */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				A79EA8C72D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "CamperLogBook" target */,
-				A79EA8C82D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "Copy Bundle Resources" phase from "CamperLogBook" target */,
 			);
 			path = CamperLogBook;
 			sourceTree = "<group>";

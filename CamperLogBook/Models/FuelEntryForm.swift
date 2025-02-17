@@ -4,14 +4,6 @@ import CoreData
 import PhotosUI
 import CoreLocation
 
-// Globale Erweiterung, falls sie noch nicht in deinem Projekt vorhanden ist:
-extension View {
-    func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                        to: nil, from: nil, for: nil)
-    }
-}
-
 struct FuelEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var locationManager: LocationManager
@@ -34,11 +26,9 @@ struct FuelEntryForm: View {
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
     @State private var showLocationPicker: Bool = false
     
-    // Neue Zustände für Belegquelle
+    // DRY – einheitliche Zustände für die Beleg-Auswahl
     @State private var showingReceiptOptions = false
-    @State private var showingPhotoPicker = false
-    @State private var showingPDFPicker = false
-    @State private var showingScanner = false
+    @State private var receiptSource: ReceiptSource? = nil
 
     var body: some View {
         NavigationView {
@@ -46,7 +36,7 @@ struct FuelEntryForm: View {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                         .submitLabel(.done)
-                        .onSubmit { hideKeyboard() }
+                        .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Kraftstoffauswahl")) {
                     Toggle("Diesel", isOn: $isDiesel)
@@ -56,19 +46,19 @@ struct FuelEntryForm: View {
                     TextField("Aktueller KM Stand", text: $currentKm)
                         .keyboardType(.numberPad)
                         .submitLabel(.done)
-                        .onSubmit { hideKeyboard() }
+                        .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: currentKm) { _, _ in updateKmDifference() }
                 }
                 Section(header: Text("Tankdaten")) {
                     TextField("Getankte Liter", text: $liters)
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
-                        .onSubmit { hideKeyboard() }
+                        .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: liters) { _, _ in computeTotalCost() }
                     TextField("Kosten pro Liter", text: $costPerLiter)
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
-                        .onSubmit { hideKeyboard() }
+                        .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: costPerLiter) { _, _ in computeTotalCost() }
                     TextField("Gesamtkosten", text: $totalCost)
                         .disabled(true)
@@ -99,9 +89,9 @@ struct FuelEntryForm: View {
                         showingReceiptOptions = true
                     }
                     .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
-                        Button("Aus Fotos wählen") { showingPhotoPicker = true }
-                        Button("Aus Dateien (PDF) wählen") { showingPDFPicker = true }
-                        Button("Kamera Scannen") { showingScanner = true }
+                        Button("Aus Fotos wählen") { receiptSource = .photo }
+                        Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
+                        Button("Kamera Scannen") { receiptSource = .scanner }
                         Button("Abbrechen", role: .cancel) { }
                     }
                 }
@@ -120,31 +110,8 @@ struct FuelEntryForm: View {
             .sheet(isPresented: $showLocationPicker) {
                 NavigationView { LocationPickerView(selectedCoordinate: $selectedLocation) }
             }
-            .sheet(isPresented: $showingPhotoPicker) {
-                PhotoPickerView { image in
-                    if let img = image {
-                        receiptImage = img
-                        pdfData = nil
-                    }
-                }
-            }
-            .sheet(isPresented: $showingPDFPicker) {
-                PDFDocumentPicker { url in
-                    if let url = url, let data = try? Data(contentsOf: url) {
-                        pdfData = data
-                        receiptImage = nil
-                    }
-                }
-            }
-            .sheet(isPresented: $showingScanner) {
-                DocumentScannerView { images in
-                    if !images.isEmpty {
-                        if let pdf = PDFCreator.createPDF(from: images) {
-                            pdfData = pdf
-                            receiptImage = nil
-                        }
-                    }
-                }
+            .sheet(item: $receiptSource) { source in
+                ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
             }
         }
     }

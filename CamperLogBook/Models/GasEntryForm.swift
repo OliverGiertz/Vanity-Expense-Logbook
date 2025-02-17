@@ -1,23 +1,25 @@
 import SwiftUI
+import UIKit
 import CoreData
 import PhotosUI
 import CoreLocation
 
-// Keine lokale hideKeyboard()-Definition!
-
-struct ServiceEntryForm: View {
+struct GasEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var locationManager: LocationManager
 
     @State private var date = Date()
-    @State private var isSupply: Bool = false
-    @State private var isDisposal: Bool = false
-    @State private var cost: String = ""
+    @State private var costPerBottle: String = ""
+    @State private var bottleCount: String = ""
     @State private var receiptImage: UIImage?
-    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var pdfData: Data?
     
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
     @State private var showLocationPicker: Bool = false
+    
+    // DRY – einheitliche Zustände für die Beleg-Auswahl
+    @State private var showingReceiptOptions = false
+    @State private var receiptSource: ReceiptSource? = nil
 
     var body: some View {
         NavigationView {
@@ -25,17 +27,17 @@ struct ServiceEntryForm: View {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                         .submitLabel(.done)
-                        .onSubmit { hideKeyboard() }
+                        .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
-                Section(header: Text("Art der Leistung")) {
-                    Toggle("Ver-sorgung", isOn: $isSupply)
-                    Toggle("Entsorgung", isOn: $isDisposal)
-                }
-                Section(header: Text("Kosten")) {
-                    TextField("Kosten", text: $cost)
+                Section(header: Text("Gaskosten")) {
+                    TextField("Kosten pro Flasche", text: $costPerBottle)
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
-                        .onSubmit { hideKeyboard() }
+                        .onSubmit { KeyboardHelper.hideKeyboard() }
+                    TextField("Anzahl Flaschen", text: $bottleCount)
+                        .keyboardType(.numberPad)
+                        .submitLabel(.done)
+                        .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Standort")) {
                     if let autoLocation = locationManager.lastLocation {
@@ -55,37 +57,42 @@ struct ServiceEntryForm: View {
                             .resizable()
                             .scaledToFit()
                             .frame(height: 150)
+                    } else if pdfData != nil {
+                        Image(systemName: "doc.richtext")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 150)
                     }
-                    PhotosPicker(selection: $photoPickerItem, matching: .images, photoLibrary: .shared()) {
-                        Text("Beleg auswählen")
+                    Button("Beleg auswählen") {
+                        showingReceiptOptions = true
                     }
-                    .onChange(of: photoPickerItem) { _, _ in
-                        if let newItem = photoPickerItem {
-                            Task {
-                                if let data = try? await newItem.loadTransferable(type: Data.self),
-                                   let uiImage = UIImage(data: data) {
-                                    receiptImage = uiImage
-                                }
-                            }
-                        }
+                    .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
+                        Button("Aus Fotos wählen") { receiptSource = .photo }
+                        Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
+                        Button("Kamera Scannen") { receiptSource = .scanner }
+                        Button("Abbrechen", role: .cancel) { }
                     }
                 }
                 Button("Speichern") {
                     saveEntry()
                 }
             }
-            .navigationTitle("Ver-/Entsorgung")
+            .navigationTitle("Gasbeleg")
             .sheet(isPresented: $showLocationPicker) {
                 NavigationView {
                     LocationPickerView(selectedCoordinate: $selectedLocation)
                 }
             }
+            .sheet(item: $receiptSource) { source in
+                ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+            }
         }
     }
     
     private func saveEntry() {
-        guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else {
-            print("Kostenkonvertierung fehlgeschlagen.")
+        guard let cost = Double(costPerBottle.replacingOccurrences(of: ",", with: ".")),
+              let count = Int64(bottleCount) else {
+            print("Eingabe ungültig.")
             return
         }
         let chosenLocation: CLLocation
@@ -97,40 +104,43 @@ struct ServiceEntryForm: View {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
             print("Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet")
         }
-        let newEntry = ServiceEntry(context: viewContext)
+        
+        let newEntry = GasEntry(context: viewContext)
         newEntry.id = UUID()
         newEntry.date = date
-        newEntry.isSupply = isSupply
-        newEntry.isDisposal = isDisposal
-        newEntry.cost = costValue
+        newEntry.costPerBottle = cost
+        newEntry.bottleCount = count
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
-        if let image = receiptImage {
+        if let pdfData = pdfData {
+            newEntry.receiptData = pdfData
+            newEntry.receiptType = "pdf"
+        } else if let image = receiptImage {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+            newEntry.receiptType = "image"
         }
         do {
             try viewContext.save()
-            print("ServiceEntry gespeichert.")
+            print("GasEntry gespeichert.")
             clearFields()
         } catch {
-            print("Fehler beim Speichern des Service-Eintrags: \(error)")
+            print("Fehler beim Speichern des GasEntry: \(error)")
         }
     }
     
     private func clearFields() {
         date = Date()
-        isSupply = false
-        isDisposal = false
-        cost = ""
+        costPerBottle = ""
+        bottleCount = ""
         receiptImage = nil
-        photoPickerItem = nil
+        pdfData = nil
         selectedLocation = nil
     }
 }
 
-struct ServiceEntryForm_Previews: PreviewProvider {
+struct GasEntryForm_Previews: PreviewProvider {
     static var previews: some View {
-        ServiceEntryForm()
+        GasEntryForm()
             .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
             .environmentObject(LocationManager())
     }
