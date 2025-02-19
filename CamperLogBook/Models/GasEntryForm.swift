@@ -20,6 +20,11 @@ struct GasEntryForm: View {
     // DRY – einheitliche Zustände für die Beleg-Auswahl
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
+    
+    // Fehlerhandling States
+    @State private var showErrorAlert: Bool = false
+    @State private var errorAlertMessage: String = ""
+    @State private var showMailView: Bool = false
 
     var body: some View {
         NavigationView {
@@ -86,13 +91,41 @@ struct GasEntryForm: View {
             .sheet(item: $receiptSource) { source in
                 ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
             }
+            // Fehleralert und Mailversand
+            .alert(isPresented: $showErrorAlert) {
+                Alert(
+                    title: Text("Fehler"),
+                    message: Text(errorAlertMessage),
+                    primaryButton: .default(Text("OK")),
+                    secondaryButton: .default(Text("Log senden"), action: {
+                        showMailView = true
+                    })
+                )
+            }
+            .sheet(isPresented: $showMailView) {
+                if let url = ErrorLogger.shared.getLogFileURL(),
+                   let logData = try? Data(contentsOf: url) {
+                    MailComposeView(
+                        recipients: ["logfile@vanityontour.de"],
+                        subject: "Fehlerlog",
+                        messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
+                        attachmentData: logData,
+                        attachmentMimeType: "text/plain",
+                        attachmentFileName: "error.log"
+                    )
+                } else {
+                    Text("Logdatei nicht verfügbar.")
+                }
+            }
         }
     }
     
     private func saveEntry() {
         guard let cost = Double(costPerBottle.replacingOccurrences(of: ",", with: ".")),
               let count = Int64(bottleCount) else {
-            print("Eingabe ungültig.")
+            ErrorLogger.shared.log(message: "Eingabe ungültig in GasEntryForm")
+            errorAlertMessage = "Eingabe ungültig."
+            showErrorAlert = true
             return
         }
         let chosenLocation: CLLocation
@@ -102,7 +135,7 @@ struct GasEntryForm: View {
             chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
         } else {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
-            print("Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet")
+            ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in GasEntryForm")
         }
         
         let newEntry = GasEntry(context: viewContext)
@@ -121,10 +154,12 @@ struct GasEntryForm: View {
         }
         do {
             try viewContext.save()
-            print("GasEntry gespeichert.")
+            ErrorLogger.shared.log(message: "GasEntry erfolgreich gespeichert in GasEntryForm")
             clearFields()
         } catch {
-            print("Fehler beim Speichern des GasEntry: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Speichern GasEntry in GasEntryForm")
+            errorAlertMessage = "Fehler beim Speichern des GasEntry: \(error.localizedDescription)"
+            showErrorAlert = true
         }
     }
     

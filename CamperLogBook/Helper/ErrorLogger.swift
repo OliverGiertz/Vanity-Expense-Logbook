@@ -2,6 +2,14 @@
 //  ErrorLogger.swift
 //  CamperLogBook
 //
+//  Created by Oliver Giertz on 19.02.25.
+//
+
+
+//
+//  ErrorLogger.swift
+//  CamperLogBook
+//
 //  Erstellt am [Datum] von [Dein Name]
 //  Zentraler Logger für Fehler, der Fehler mit Zeitstempel in eine .log-Datei im Dokumentenverzeichnis schreibt.
 //

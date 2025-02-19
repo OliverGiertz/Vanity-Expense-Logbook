@@ -17,6 +17,11 @@ struct EditOtherEntryView: View {
     // Zustände für die Beleg-Auswahl
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
+    
+    // Fehlerhandling
+    @State private var showErrorAlert: Bool = false
+    @State private var errorAlertMessage: String = ""
+    @State private var showMailView: Bool = false
 
     init(otherEntry: OtherEntry) {
         self.otherEntry = otherEntry
@@ -87,6 +92,32 @@ struct EditOtherEntryView: View {
         .sheet(item: $receiptSource) { source in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
+        // Fehleralert und Mailversand
+        .alert(isPresented: $showErrorAlert) {
+            Alert(
+                title: Text("Fehler"),
+                message: Text(errorAlertMessage),
+                primaryButton: .default(Text("OK")),
+                secondaryButton: .default(Text("Log senden"), action: {
+                    showMailView = true
+                })
+            )
+        }
+        .sheet(isPresented: $showMailView) {
+            if let url = ErrorLogger.shared.getLogFileURL(),
+               let logData = try? Data(contentsOf: url) {
+                MailComposeView(
+                    recipients: ["logfile@vanityontour.de"],
+                    subject: "Fehlerlog",
+                    messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
+                    attachmentData: logData,
+                    attachmentMimeType: "text/plain",
+                    attachmentFileName: "error.log"
+                )
+            } else {
+                Text("Logdatei nicht verfügbar.")
+            }
+        }
     }
 
     private func saveChanges() {
@@ -106,7 +137,9 @@ struct EditOtherEntryView: View {
             try viewContext.save()
             dismiss()
         } catch {
-            print("Fehler beim Speichern: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Speichern EditOtherEntryView")
+            errorAlertMessage = "Fehler beim Speichern: \(error.localizedDescription)"
+            showErrorAlert = true
         }
     }
     
@@ -116,7 +149,9 @@ struct EditOtherEntryView: View {
             try viewContext.save()
             dismiss()
         } catch {
-            print("Fehler beim Löschen: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Löschen EditOtherEntryView")
+            errorAlertMessage = "Fehler beim Löschen: \(error.localizedDescription)"
+            showErrorAlert = true
         }
     }
 }

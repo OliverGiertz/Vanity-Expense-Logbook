@@ -28,6 +28,11 @@ struct OtherEntryForm: View {
     enum Field: Hashable {
         case cost, details, customCategory
     }
+    
+    // Fehler-Handling States
+    @State private var showErrorAlert: Bool = false
+    @State private var errorAlertMessage: String = ""
+    @State private var showMailView: Bool = false
 
     var body: some View {
         NavigationView {
@@ -111,6 +116,32 @@ struct OtherEntryForm: View {
             .sheet(item: $receiptSource) { source in
                 ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
             }
+            // Fehleralert mit Option zum Versenden des Logs
+            .alert(isPresented: $showErrorAlert) {
+                Alert(
+                    title: Text("Fehler"),
+                    message: Text(errorAlertMessage),
+                    primaryButton: .default(Text("OK")),
+                    secondaryButton: .default(Text("Log senden"), action: {
+                        showMailView = true
+                    })
+                )
+            }
+            .sheet(isPresented: $showMailView) {
+                if let url = ErrorLogger.shared.getLogFileURL(),
+                   let logData = try? Data(contentsOf: url) {
+                    MailComposeView(
+                        recipients: ["logfile@vanityontour.de"],
+                        subject: "Fehlerlog",
+                        messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
+                        attachmentData: logData,
+                        attachmentMimeType: "text/plain",
+                        attachmentFileName: "error.log"
+                    )
+                } else {
+                    Text("Logdatei nicht verfügbar.")
+                }
+            }
         }
     }
     
@@ -149,7 +180,9 @@ struct OtherEntryForm: View {
             try viewContext.save()
             clearFields()
         } catch {
-            print("Error saving other entry: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Speichern OtherEntry in OtherEntryForm")
+            errorAlertMessage = "Fehler beim Speichern des Eintrags: \(error.localizedDescription)"
+            showErrorAlert = true
         }
     }
     

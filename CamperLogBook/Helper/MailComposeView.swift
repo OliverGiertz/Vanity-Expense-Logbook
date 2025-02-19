@@ -2,6 +2,14 @@
 //  MailComposeView.swift
 //  CamperLogBook
 //
+//  Created by Oliver Giertz on 19.02.25.
+//
+
+
+//
+//  MailComposeView.swift
+//  CamperLogBook
+//
 //  Erstellt am [Datum] von [Dein Name]
 //  UIViewControllerRepresentable für MFMailComposeViewController
 //

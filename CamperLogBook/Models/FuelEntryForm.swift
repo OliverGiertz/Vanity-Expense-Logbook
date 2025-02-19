@@ -29,6 +29,11 @@ struct FuelEntryForm: View {
     // DRY – einheitliche Zustände für die Beleg-Auswahl
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
+    
+    // Fehlerhandling States
+    @State private var showErrorAlert: Bool = false
+    @State private var errorAlertMessage: String = ""
+    @State private var showMailView: Bool = false
 
     var body: some View {
         NavigationView {
@@ -113,6 +118,34 @@ struct FuelEntryForm: View {
             .sheet(item: $receiptSource) { source in
                 ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
             }
+            // Fehleralert und Mailversand
+            .alert(isPresented: $showErrorAlert) {
+                Alert(
+                    title: Text("Fehler"),
+                    message: Text(errorAlertMessage),
+                    primaryButton: .default(Text("OK")),
+                    secondaryButton: .default(Text("Log senden"), action: {
+                        showMailView = true
+                    })
+                )
+            }
+            .sheet(isPresented: $showMailView, onDismiss: {
+                // Optional: Log zurücksetzen oder ähnliches
+            }) {
+                if let url = ErrorLogger.shared.getLogFileURL(),
+                   let logData = try? Data(contentsOf: url) {
+                    MailComposeView(
+                        recipients: ["logfile@vanityontour.de"],
+                        subject: "Fehlerlog",
+                        messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
+                        attachmentData: logData,
+                        attachmentMimeType: "text/plain",
+                        attachmentFileName: "error.log"
+                    )
+                } else {
+                    Text("Logdatei nicht verfügbar.")
+                }
+            }
         }
     }
     
@@ -150,7 +183,7 @@ struct FuelEntryForm: View {
                 consumptionPer100km = nil
             }
         } catch {
-            print("Error updating km difference: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Error updating km difference in FuelEntryForm")
             kmDifference = nil
             consumptionPer100km = nil
         }
@@ -160,22 +193,22 @@ struct FuelEntryForm: View {
         errorMessage = nil
         guard let currentKmValue = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) else {
             errorMessage = "Ungültiger KM-Stand: \(currentKm)"
-            print(errorMessage!)
+            ErrorLogger.shared.log(message: errorMessage!)
             return
         }
         guard let litersValue = Double(liters.replacingOccurrences(of: ",", with: ".")) else {
             errorMessage = "Ungültige Literzahl: \(liters)"
-            print(errorMessage!)
+            ErrorLogger.shared.log(message: errorMessage!)
             return
         }
         guard let costPerLiterValue = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")) else {
             errorMessage = "Ungültiger Preis pro Liter: \(costPerLiter)"
-            print(errorMessage!)
+            ErrorLogger.shared.log(message: errorMessage!)
             return
         }
         guard let totalCostValue = Double(totalCost.replacingOccurrences(of: ",", with: ".")) else {
             errorMessage = "Ungültige Gesamtkosten: \(totalCost)"
-            print(errorMessage!)
+            ErrorLogger.shared.log(message: errorMessage!)
             return
         }
         let chosenLocation: CLLocation
@@ -185,7 +218,7 @@ struct FuelEntryForm: View {
             chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
         } else {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
-            print("Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet")
+            ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in FuelEntryForm")
         }
         let newEntry = FuelEntry(context: viewContext)
         newEntry.id = UUID()
@@ -219,15 +252,16 @@ struct FuelEntryForm: View {
                 }
             }
         } catch {
-            print("Error fetching previous fuel entry: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Error fetching previous fuel entry in FuelEntryForm")
         }
         do {
             try viewContext.save()
-            print("Eintrag erfolgreich gespeichert.")
+            ErrorLogger.shared.log(message: "Eintrag erfolgreich gespeichert in FuelEntryForm")
             clearFields()
         } catch {
-            errorMessage = "Fehler beim Speichern: \(error.localizedDescription)"
-            print(errorMessage!)
+            ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Speichern in FuelEntryForm")
+            errorAlertMessage = "Fehler beim Speichern: \(error.localizedDescription)"
+            showErrorAlert = true
         }
     }
     

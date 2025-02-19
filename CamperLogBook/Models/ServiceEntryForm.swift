@@ -16,6 +16,11 @@ struct ServiceEntryForm: View {
     
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
     @State private var showLocationPicker: Bool = false
+    
+    // Fehlerhandling States
+    @State private var showErrorAlert: Bool = false
+    @State private var errorAlertMessage: String = ""
+    @State private var showMailView: Bool = false
 
     var body: some View {
         NavigationView {
@@ -78,12 +83,38 @@ struct ServiceEntryForm: View {
                     LocationPickerView(selectedCoordinate: $selectedLocation)
                 }
             }
+            // Alert und Mail-Versand
+            .alert(isPresented: $showErrorAlert) {
+                Alert(
+                    title: Text("Fehler"),
+                    message: Text(errorAlertMessage),
+                    primaryButton: .default(Text("OK")),
+                    secondaryButton: .default(Text("Log senden"), action: {
+                        showMailView = true
+                    })
+                )
+            }
+            .sheet(isPresented: $showMailView) {
+                if let url = ErrorLogger.shared.getLogFileURL(),
+                   let logData = try? Data(contentsOf: url) {
+                    MailComposeView(
+                        recipients: ["logfile@vanityontour.de"],
+                        subject: "Fehlerlog",
+                        messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
+                        attachmentData: logData,
+                        attachmentMimeType: "text/plain",
+                        attachmentFileName: "error.log"
+                    )
+                } else {
+                    Text("Logdatei nicht verfügbar.")
+                }
+            }
         }
     }
     
     private func saveEntry() {
         guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else {
-            print("Kostenkonvertierung fehlgeschlagen.")
+            ErrorLogger.shared.log(message: "Kostenkonvertierung fehlgeschlagen in ServiceEntryForm")
             return
         }
         let chosenLocation: CLLocation
@@ -93,7 +124,7 @@ struct ServiceEntryForm: View {
             chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
         } else {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
-            print("Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet")
+            ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in ServiceEntryForm")
         }
         let newEntry = ServiceEntry(context: viewContext)
         newEntry.id = UUID()
@@ -108,10 +139,11 @@ struct ServiceEntryForm: View {
         }
         do {
             try viewContext.save()
-            print("ServiceEntry gespeichert.")
             clearFields()
         } catch {
-            print("Fehler beim Speichern des Service-Eintrags: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Speichern ServiceEntry in ServiceEntryForm")
+            errorAlertMessage = "Fehler beim Speichern des Service-Eintrags: \(error.localizedDescription)"
+            showErrorAlert = true
         }
     }
     

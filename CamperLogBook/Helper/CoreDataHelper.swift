@@ -15,10 +15,27 @@ func deleteAllTestData() {
                     let changes = [NSDeletedObjectsKey: objectIDs]
                     NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [context])
                 }
-                ErrorLogger.shared.log(message: "Alle Objekte in \(name) wurden gelöscht.")
+                print("Alle Objekte in \(name) wurden gelöscht.")
             } catch {
-                ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Löschen der Einträge in \(name)")
+                print("Fehler beim Löschen der Einträge in \(name): \(error)")
             }
         }
+    }
+}
+
+func deleteFaultyOtherEntry(in context: NSManagedObjectContext) {
+    let faultyID = UUID(uuidString: "DF365B9D-5D5A-4C7C-BDFD-1C099A955968")!
+    let request: NSFetchRequest<OtherEntry> = OtherEntry.fetchRequest() as! NSFetchRequest<OtherEntry>
+    request.predicate = NSPredicate(format: "id == %@", faultyID as CVarArg)
+    
+    do {
+        let entries = try context.fetch(request)
+        for entry in entries {
+            context.delete(entry)
+        }
+        try context.save()
+        print("Fehlerhafter OtherEntry mit ID \(faultyID) wurde gelöscht.")
+    } catch {
+        print("Fehler beim Löschen des fehlerhaften OtherEntry: \(error)")
     }
 }
