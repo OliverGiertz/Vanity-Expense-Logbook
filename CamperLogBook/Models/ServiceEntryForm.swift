@@ -17,6 +17,9 @@ struct ServiceEntryForm: View {
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
     @State private var showLocationPicker: Bool = false
     
+    // Neuer State für Frischwasser-Eingabe
+    @State private var freshWaterText: String = ""
+    
     // Fehlerhandling States
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
@@ -31,8 +34,16 @@ struct ServiceEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Art der Leistung")) {
-                    Toggle("Ver-sorgung", isOn: $isSupply)
+                    // Toggle-Label angepasst zu "Versorgung"
+                    Toggle("Versorgung", isOn: $isSupply)
                     Toggle("Entsorgung", isOn: $isDisposal)
+                }
+                // Falls Versorgung ausgewählt, zeige zusätzlich das Frischwasser-Feld
+                if isSupply {
+                    Section(header: Text("Frischwasser")) {
+                        TextField("Getankte Frischwasser (Liter)", text: $freshWaterText)
+                            .keyboardType(.decimalPad)
+                    }
                 }
                 Section(header: Text("Kosten")) {
                     TextField("Kosten", text: $cost)
@@ -83,7 +94,7 @@ struct ServiceEntryForm: View {
                     LocationPickerView(selectedCoordinate: $selectedLocation)
                 }
             }
-            // Alert und Mail-Versand
+            // Fehleralert und Mail-Versand
             .alert(isPresented: $showErrorAlert) {
                 Alert(
                     title: Text("Fehler"),
@@ -113,10 +124,12 @@ struct ServiceEntryForm: View {
     }
     
     private func saveEntry() {
-        guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else {
+        let costText = cost.replacingOccurrences(of: ",", with: ".")
+        guard let costValue = Double(costText) else {
             ErrorLogger.shared.log(message: "Kostenkonvertierung fehlgeschlagen in ServiceEntryForm")
             return
         }
+        
         let chosenLocation: CLLocation
         if let autoLocation = locationManager.lastLocation {
             chosenLocation = autoLocation
@@ -134,6 +147,12 @@ struct ServiceEntryForm: View {
         newEntry.cost = costValue
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
+        // Falls Versorgung ausgewählt, versuche den Frischwasserwert zu parsen, ansonsten 0.0
+        if isSupply {
+            newEntry.freshWater = Double(freshWaterText.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        } else {
+            newEntry.freshWater = 0.0
+        }
         if let image = receiptImage {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
         }
@@ -155,13 +174,6 @@ struct ServiceEntryForm: View {
         receiptImage = nil
         photoPickerItem = nil
         selectedLocation = nil
-    }
-}
-
-struct ServiceEntryForm_Previews: PreviewProvider {
-    static var previews: some View {
-        ServiceEntryForm()
-            .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
-            .environmentObject(LocationManager())
+        freshWaterText = ""
     }
 }

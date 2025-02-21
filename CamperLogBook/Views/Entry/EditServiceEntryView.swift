@@ -12,6 +12,8 @@ struct EditServiceEntryView: View {
     @State private var isDisposal: Bool
     @State private var cost: String
     @State private var receiptImage: UIImage?
+    // Neuer State für Frischwasser-Eingabe
+    @State private var freshWaterText: String
 
     init(serviceEntry: ServiceEntry) {
         self.serviceEntry = serviceEntry
@@ -19,6 +21,7 @@ struct EditServiceEntryView: View {
         _isSupply = State(initialValue: serviceEntry.isSupply)
         _isDisposal = State(initialValue: serviceEntry.isDisposal)
         _cost = State(initialValue: String(serviceEntry.cost))
+        _freshWaterText = State(initialValue: String(serviceEntry.freshWater))
         if let data = serviceEntry.receiptData, let image = UIImage(data: data) {
             _receiptImage = State(initialValue: image)
         } else {
@@ -34,8 +37,16 @@ struct EditServiceEntryView: View {
                     .onSubmit { KeyboardHelper.hideKeyboard() }
             }
             Section(header: Text("Art der Leistung")) {
-                Toggle("Ver-sorgung", isOn: $isSupply)
+                // Toggle-Label geändert zu "Versorgung"
+                Toggle("Versorgung", isOn: $isSupply)
                 Toggle("Entsorgung", isOn: $isDisposal)
+            }
+            // Zeige das Frischwasser-Feld nur, wenn Versorgung aktiviert ist
+            if isSupply {
+                Section(header: Text("Frischwasser")) {
+                    TextField("Getankte Frischwasser (Liter)", text: $freshWaterText)
+                        .keyboardType(.decimalPad)
+                }
             }
             Section(header: Text("Kosten")) {
                 TextField("Kosten", text: $cost)
@@ -63,6 +74,12 @@ struct EditServiceEntryView: View {
         serviceEntry.isSupply = isSupply
         serviceEntry.isDisposal = isDisposal
         serviceEntry.cost = costValue
+        // Aktualisiere das Frischwasser-Feld, wenn Versorgung ausgewählt ist
+        if isSupply {
+            serviceEntry.freshWater = Double(freshWaterText.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        } else {
+            serviceEntry.freshWater = 0.0
+        }
         do {
             try viewContext.save()
             dismiss()
@@ -79,21 +96,5 @@ struct EditServiceEntryView: View {
         } catch {
             print("Fehler beim Löschen des Service-Eintrags: \(error)")
         }
-    }
-}
-
-struct EditServiceEntryView_Previews: PreviewProvider {
-    static var previews: some View {
-        let context = PersistenceController.shared.container.viewContext
-        let entry = ServiceEntry(context: context)
-        entry.id = UUID()
-        entry.date = Date()
-        entry.isSupply = true
-        entry.isDisposal = false
-        entry.cost = 30.0
-        return NavigationView {
-            EditServiceEntryView(serviceEntry: entry)
-        }
-        .environment(\.managedObjectContext, context)
     }
 }
