@@ -17,6 +17,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("Auswertung", systemImage: "chart.bar")
                 }
+            FuelMapView()
+                .tabItem {
+                    Label("Karte", systemImage: "map")
+                }
             ProfileView()
                 .tabItem {
                     Label("Profil", systemImage: "person.crop.circle")

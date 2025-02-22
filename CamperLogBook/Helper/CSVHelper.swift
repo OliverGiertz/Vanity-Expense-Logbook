@@ -15,6 +15,13 @@ struct CSVHelper {
         return formatter
     }()
     
+    /// Hilfsfunktion, die einen String normalisiert, indem alle Kommas durch Punkte ersetzt werden,
+    /// und anschließend versucht, einen Double-Wert zu erzeugen.
+    private static func parseDouble(from string: String) -> Double? {
+        let normalized = string.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)
+        return Double(normalized)
+    }
+    
     /// Importiert eine CSV-Datei (Semikolon-getrennt) und erstellt Core Data-Objekte.
     /// - Parameters:
     ///   - type: Der zu importierende Eintragstyp.
@@ -35,7 +42,7 @@ struct CSVHelper {
             for (index, header) in headers.enumerated() {
                 row[header] = values[index]
             }
-            // Konvertiere alle Keys in Kleinbuchstaben, um Probleme mit Groß-/Kleinschreibung zu vermeiden.
+            // Alle Keys in Kleinbuchstaben umwandeln
             let rowLower = Dictionary(uniqueKeysWithValues: row.map { (key, value) in (key.lowercased(), value) } )
             switch type {
             case .fuel:
@@ -59,7 +66,7 @@ struct CSVHelper {
     }
     
     private static func importFuelEntry(from row: [String: String], in context: NSManagedObjectContext) throws -> FuelEntry? {
-        // Erwarteter Header: Date;IsDiesel;IsAdBlue;currentKm;liters;costPerLiter;totalCost
+        // Erwarteter Header: date;isdiesel;isadblue;currentkm;liters;costperliter;totalcost;latitude;longitude;receiptdata
         guard let dateString = row["date"], let date = dateFormatter.date(from: dateString) else { return nil }
         let entry = FuelEntry(context: context)
         entry.id = UUID()
@@ -77,17 +84,14 @@ struct CSVHelper {
                 entry.currentKm = km
             }
         }
-        if let litersStr = row["liters"] {
-            let lit = litersStr.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)
-            if let liters = Double(lit) {
-                entry.liters = liters
-            }
+        if let litersStr = row["liters"], let liters = parseDouble(from: litersStr) {
+            entry.liters = liters
         }
         if let costPerLiterStr = row["costperliter"] {
-            let costStr = costPerLiterStr.replacingOccurrences(of: "€", with: "")
+            let costStr = costPerLiterStr
+                .replacingOccurrences(of: "€", with: "")
                 .replacingOccurrences(of: " ", with: "")
-                .replacingOccurrences(of: ",", with: ".")
-            if let cost = Double(costStr) {
+            if let cost = parseDouble(from: costStr) {
                 entry.costPerLiter = cost
             }
         }
@@ -95,15 +99,17 @@ struct CSVHelper {
             let totalStr = totalCostStr
                 .replacingOccurrences(of: "€", with: "")
                 .replacingOccurrences(of: " ", with: "")
-                .replacingOccurrences(of: ",", with: ".")
-            if let total = Double(totalStr) {
+            if let total = parseDouble(from: totalStr) {
                 entry.totalCost = total
             }
         }
-        if let latitudeStr = row["latitude"], let lat = Double(latitudeStr.trimmingCharacters(in: .whitespaces)) {
+        // GPS-Werte: zuerst "latitude" bzw. "longitude", falls nicht vorhanden "lat"/"lon"
+        let latKey = row["latitude"] ?? row["lat"] ?? ""
+        if !latKey.isEmpty, let lat = parseDouble(from: latKey) {
             entry.latitude = lat
         }
-        if let longitudeStr = row["longitude"], let lon = Double(longitudeStr.trimmingCharacters(in: .whitespaces)) {
+        let lonKey = row["longitude"] ?? row["lon"] ?? ""
+        if !lonKey.isEmpty, let lon = parseDouble(from: lonKey) {
             entry.longitude = lon
         }
         if let receiptDataStr = row["receiptdata"], !receiptDataStr.isEmpty,
@@ -119,10 +125,10 @@ struct CSVHelper {
         entry.id = UUID()
         entry.date = date
         if let costPerBottleStr = row["costperbottle"] {
-            let costStr = costPerBottleStr.replacingOccurrences(of: "€", with: "")
+            let costStr = costPerBottleStr
+                .replacingOccurrences(of: "€", with: "")
                 .replacingOccurrences(of: " ", with: "")
-                .replacingOccurrences(of: ",", with: ".")
-            if let costPerBottle = Double(costStr) {
+            if let costPerBottle = parseDouble(from: costStr) {
                 entry.costPerBottle = costPerBottle
             }
         }
@@ -130,10 +136,12 @@ struct CSVHelper {
            let count = Int64(bottleCountStr) {
             entry.bottleCount = count
         }
-        if let latitudeStr = row["latitude"], let lat = Double(latitudeStr.trimmingCharacters(in: .whitespaces)) {
+        let latKey = row["latitude"] ?? row["lat"] ?? ""
+        if !latKey.isEmpty, let lat = parseDouble(from: latKey) {
             entry.latitude = lat
         }
-        if let longitudeStr = row["longitude"], let lon = Double(longitudeStr.trimmingCharacters(in: .whitespaces)) {
+        let lonKey = row["longitude"] ?? row["lon"] ?? ""
+        if !lonKey.isEmpty, let lon = parseDouble(from: lonKey) {
             entry.longitude = lon
         }
         if let receiptDataStr = row["receiptdata"], !receiptDataStr.isEmpty,
@@ -155,17 +163,19 @@ struct CSVHelper {
             entry.details = details
         }
         if let costStr = row["cost"] {
-            let costClean = costStr.replacingOccurrences(of: "€", with: "")
+            let costClean = costStr
+                .replacingOccurrences(of: "€", with: "")
                 .replacingOccurrences(of: " ", with: "")
-                .replacingOccurrences(of: ",", with: ".")
-            if let cost = Double(costClean) {
+            if let cost = parseDouble(from: costClean) {
                 entry.cost = cost
             }
         }
-        if let latitudeStr = row["latitude"], let lat = Double(latitudeStr.trimmingCharacters(in: .whitespaces)) {
+        let latKey = row["latitude"] ?? row["lat"] ?? ""
+        if !latKey.isEmpty, let lat = parseDouble(from: latKey) {
             entry.latitude = lat
         }
-        if let longitudeStr = row["longitude"], let lon = Double(longitudeStr.trimmingCharacters(in: .whitespaces)) {
+        let lonKey = row["longitude"] ?? row["lon"] ?? ""
+        if !lonKey.isEmpty, let lon = parseDouble(from: lonKey) {
             entry.longitude = lon
         }
         if let receiptDataStr = row["receiptdata"], !receiptDataStr.isEmpty,
@@ -267,5 +277,61 @@ struct CSVHelper {
         }
         
         return rows.joined(separator: "\n")
+    }
+    
+    /// Funktion zur Korrektur von GPS-Werten in FuelEntry, GasEntry und OtherEntry in Core Data.
+    /// Diese Funktion wird in einem Hintergrundkontext ausgeführt, um den Hauptthread nicht zu blockieren.
+    static func correctGPSValues(in mainContext: NSManagedObjectContext) {
+        let container = PersistenceController.shared.container
+        let bgContext = container.newBackgroundContext()
+        bgContext.perform {
+            let fuelRequest: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+            let gasRequest: NSFetchRequest<GasEntry> = GasEntry.fetchRequest() as! NSFetchRequest<GasEntry>
+            let otherRequest: NSFetchRequest<OtherEntry> = OtherEntry.fetchRequest() as! NSFetchRequest<OtherEntry>
+            do {
+                let fuelEntries = try bgContext.fetch(fuelRequest)
+                let gasEntries = try bgContext.fetch(gasRequest)
+                let otherEntries = try bgContext.fetch(otherRequest)
+                var didChange = false
+                
+                for entry in fuelEntries {
+                    // Hier könnten bei Bedarf Korrekturen vorgenommen werden.
+                    // Aktuell wird nur geloggt, falls Werte 0 sind.
+                    if entry.latitude == 0 || entry.longitude == 0 {
+                        print("FuelEntry \(entry.id) hat fehlerhafte GPS-Daten: Lat=\(entry.latitude), Lon=\(entry.longitude)")
+                        // Hier könnte man einen Default-Wert setzen, z. B. den Nutzerstandort, falls verfügbar.
+                        // entry.latitude = <default value>
+                        // entry.longitude = <default value>
+                        didChange = true
+                    }
+                }
+                for entry in gasEntries {
+                    if entry.latitude == 0 || entry.longitude == 0 {
+                        print("GasEntry \(entry.id) hat fehlerhafte GPS-Daten: Lat=\(entry.latitude), Lon=\(entry.longitude)")
+                        didChange = true
+                    }
+                }
+                for entry in otherEntries {
+                    if entry.latitude == 0 || entry.longitude == 0 {
+                        print("OtherEntry \(entry.id) hat fehlerhafte GPS-Daten: Lat=\(entry.latitude), Lon=\(entry.longitude)")
+                        didChange = true
+                    }
+                }
+                
+                if didChange && bgContext.hasChanges {
+                    try bgContext.save()
+                }
+            } catch {
+                print("Fehler beim Korrigieren der GPS-Daten im Hintergrund: \(error)")
+            }
+            // Änderungen in den Hauptkontext übernehmen
+            mainContext.perform {
+                do {
+                    try mainContext.save()
+                } catch {
+                    print("Fehler beim Übernehmen der Hintergrundänderungen: \(error)")
+                }
+            }
+        }
     }
 }

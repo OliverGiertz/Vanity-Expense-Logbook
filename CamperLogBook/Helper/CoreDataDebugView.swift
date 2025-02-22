@@ -11,7 +11,9 @@ enum DebugEntity: String, CaseIterable, Identifiable {
 }
 
 struct CoreDataDebugView: View {
+    @Environment(\.managedObjectContext) private var viewContext
     @State private var selectedEntity: DebugEntity = .fuel
+    var gpsFormatter: NumberFormatter
     
     var body: some View {
         VStack {
@@ -23,16 +25,15 @@ struct CoreDataDebugView: View {
             .pickerStyle(SegmentedPickerStyle())
             .padding()
             
-            // Je nach Auswahl wird die entsprechende Liste angezeigt.
             switch selectedEntity {
             case .fuel:
-                FuelEntryDebugList()
+                FuelEntryDebugList(gpsFormatter: gpsFormatter)
             case .gas:
-                GasEntryDebugList()
+                GasEntryDebugList(gpsFormatter: gpsFormatter)
             case .service:
-                ServiceEntryDebugList()
+                ServiceEntryDebugList(gpsFormatter: gpsFormatter)
             case .other:
-                OtherEntryDebugList()
+                OtherEntryDebugList(gpsFormatter: gpsFormatter)
             }
         }
         .navigationTitle("Core Data Debug")
@@ -41,6 +42,7 @@ struct CoreDataDebugView: View {
 
 struct FuelEntryDebugList: View {
     @FetchRequest(fetchRequest: FuelEntry.fetchAll()) var items: FetchedResults<FuelEntry>
+    var gpsFormatter: NumberFormatter
     
     var body: some View {
         List {
@@ -49,6 +51,7 @@ struct FuelEntryDebugList: View {
                     VStack(alignment: .leading) {
                         Text("Datum: \(item.date, formatter: debugDateFormatter)")
                         Text("KM: \(item.currentKm), TotalCost: \(item.totalCost)")
+                        Text("GPS: Lat: \(gpsFormatter.string(from: NSNumber(value: item.latitude)) ?? "\(item.latitude)") , Lon: \(gpsFormatter.string(from: NSNumber(value: item.longitude)) ?? "\(item.longitude)")")
                     }
                 }
             }
@@ -69,6 +72,7 @@ struct FuelEntryDebugList: View {
 
 struct GasEntryDebugList: View {
     @FetchRequest(fetchRequest: GasEntry.fetchAll()) var items: FetchedResults<GasEntry>
+    var gpsFormatter: NumberFormatter
     
     var body: some View {
         List {
@@ -77,6 +81,7 @@ struct GasEntryDebugList: View {
                     VStack(alignment: .leading) {
                         Text("Datum: \(item.date, formatter: debugDateFormatter)")
                         Text("CostPerBottle: \(item.costPerBottle), BottleCount: \(item.bottleCount)")
+                        Text("GPS: Lat: \(gpsFormatter.string(from: NSNumber(value: item.latitude)) ?? "\(item.latitude)") , Lon: \(gpsFormatter.string(from: NSNumber(value: item.longitude)) ?? "\(item.longitude)")")
                     }
                 }
             }
@@ -97,6 +102,7 @@ struct GasEntryDebugList: View {
 
 struct ServiceEntryDebugList: View {
     @FetchRequest(fetchRequest: ServiceEntry.fetchAll()) var items: FetchedResults<ServiceEntry>
+    var gpsFormatter: NumberFormatter
     
     var body: some View {
         List {
@@ -105,6 +111,7 @@ struct ServiceEntryDebugList: View {
                     VStack(alignment: .leading) {
                         Text("Datum: \(item.date, formatter: debugDateFormatter)")
                         Text("Cost: \(item.cost)")
+                        Text("GPS: Lat: \(gpsFormatter.string(from: NSNumber(value: item.latitude)) ?? "\(item.latitude)") , Lon: \(gpsFormatter.string(from: NSNumber(value: item.longitude)) ?? "\(item.longitude)")")
                     }
                 }
             }
@@ -125,6 +132,7 @@ struct ServiceEntryDebugList: View {
 
 struct OtherEntryDebugList: View {
     @FetchRequest(fetchRequest: OtherEntry.fetchAll()) var items: FetchedResults<OtherEntry>
+    var gpsFormatter: NumberFormatter
     
     var body: some View {
         List {
@@ -133,6 +141,7 @@ struct OtherEntryDebugList: View {
                     VStack(alignment: .leading) {
                         Text("Datum: \(item.date, formatter: debugDateFormatter)")
                         Text("Kategorie: \(item.category), Cost: \(item.cost)")
+                        Text("GPS: Lat: \(gpsFormatter.string(from: NSNumber(value: item.latitude)) ?? "\(item.latitude)") , Lon: \(gpsFormatter.string(from: NSNumber(value: item.longitude)) ?? "\(item.longitude)")")
                     }
                 }
             }
