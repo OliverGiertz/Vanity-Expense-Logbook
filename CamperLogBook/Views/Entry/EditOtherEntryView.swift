@@ -18,6 +18,9 @@ struct EditOtherEntryView: View {
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
     
+    // Neuer State für die Belegvorschau
+    @State private var showReceiptDetail = false
+    
     // Fehlerhandling
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
@@ -31,7 +34,9 @@ struct EditOtherEntryView: View {
         _cost = State(initialValue: String(otherEntry.cost))
         if otherEntry.receiptType == "image", let data = otherEntry.receiptData, let image = UIImage(data: data) {
             _receiptImage = State(initialValue: image)
+            _pdfData = State(initialValue: nil)
         } else if otherEntry.receiptType == "pdf", let data = otherEntry.receiptData {
+            _receiptImage = State(initialValue: nil)
             _pdfData = State(initialValue: data)
         } else {
             _receiptImage = State(initialValue: nil)
@@ -77,6 +82,24 @@ struct EditOtherEntryView: View {
                     Button("Abbrechen", role: .cancel) { }
                 }
             }
+            // Neue Belegvorschau
+            if receiptImage != nil || pdfData != nil {
+                Section(header: Text("Belegvorschau")) {
+                    Button(action: { showReceiptDetail = true }) {
+                        if let image = receiptImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 120)
+                        } else if pdfData != nil {
+                            Image(systemName: "doc.richtext")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 120)
+                        }
+                    }
+                }
+            }
             Button("Speichern") {
                 saveChanges()
             }
@@ -92,7 +115,12 @@ struct EditOtherEntryView: View {
         .sheet(item: $receiptSource) { source in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
-        // Fehleralert und Mailversand
+        .sheet(isPresented: $showReceiptDetail) {
+            NavigationView {
+                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
+            }
+        }
+        // Fehleralert und Mailversand (wie gehabt)
         .alert(isPresented: $showErrorAlert) {
             Alert(
                 title: Text("Fehler"),

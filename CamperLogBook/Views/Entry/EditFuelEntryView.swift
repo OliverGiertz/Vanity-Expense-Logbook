@@ -21,6 +21,9 @@ struct EditFuelEntryView: View {
     // Zustände für die Beleg-Auswahl
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
+    
+    // Neuer State für die Belegvorschau
+    @State private var showReceiptDetail = false
 
     init(fuelEntry: FuelEntry) {
         self.fuelEntry = fuelEntry
@@ -86,6 +89,24 @@ struct EditFuelEntryView: View {
                     Button("Abbrechen", role: .cancel) { }
                 }
             }
+            // Neue Belegvorschau
+            if receiptImage != nil || pdfData != nil {
+                Section(header: Text("Belegvorschau")) {
+                    Button(action: { showReceiptDetail = true }) {
+                        if let image = receiptImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 120)
+                        } else if pdfData != nil {
+                            Image(systemName: "doc.richtext")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 120)
+                        }
+                    }
+                }
+            }
             Button("Änderungen speichern") {
                 saveChanges()
             }
@@ -100,6 +121,11 @@ struct EditFuelEntryView: View {
         .navigationTitle("Eintrag bearbeiten")
         .sheet(item: $receiptSource) { source in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+        }
+        .sheet(isPresented: $showReceiptDetail) {
+            NavigationView {
+                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
+            }
         }
     }
     
@@ -140,6 +166,10 @@ struct EditFuelEntryView: View {
         } catch {
             print("Fehler beim Löschen: \(error)")
         }
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

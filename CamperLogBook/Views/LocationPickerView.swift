@@ -12,13 +12,21 @@ struct LocationPickerView: View {
 
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 51.1657, longitude: 10.4515),
-        latitudinalMeters: 1000000,
-        longitudinalMeters: 1000000
+        latitudinalMeters: 1_000_000,
+        longitudinalMeters: 1_000_000
     )
-
+    
+    // Das Zentrum der Karte als Annotation
+    private var centerAnnotations: [IdentifiableCoordinate] {
+        [IdentifiableCoordinate(coordinate: region.center)]
+    }
+    
     var body: some View {
-        Map(coordinateRegion: $region, annotationItems: [IdentifiableCoordinate(coordinate: region.center)]) { item in
-            MapMarker(coordinate: item.coordinate, tint: .red)
+        Map(coordinateRegion: $region, annotationItems: centerAnnotations) { item in
+            MapAnnotation(coordinate: item.coordinate) {
+                Image(systemName: "mappin.circle.fill")
+                    .foregroundColor(.red)
+            }
         }
         .frame(height: 300)
         .overlay(
@@ -26,7 +34,8 @@ struct LocationPickerView: View {
                 .padding(6)
                 .background(Color.white.opacity(0.8))
                 .cornerRadius(8)
-                .padding(), alignment: .top
+                .padding(),
+            alignment: .top
         )
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

@@ -14,8 +14,11 @@ public class FuelEntry: NSManagedObject, Identifiable {
     @NSManaged public var latitude: Double
     @NSManaged public var longitude: Double
     @NSManaged public var receiptData: Data?
-    // Neues Attribut, um den Belegtyp zu unterscheiden ("image" oder "pdf")
     @NSManaged public var receiptType: String?
+    
+    // Neue Felder: Gerundete GPS-Werte
+    @NSManaged public var roundedLatitude: Double
+    @NSManaged public var roundedLongitude: Double
 }
 
 extension FuelEntry {
@@ -23,6 +26,18 @@ extension FuelEntry {
         let request: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         return request
+    }
+    
+    public override func willSave() {
+        super.willSave()
+        let newRoundedLat = (latitude * 10000).rounded() / 10000
+        let newRoundedLon = (longitude * 10000).rounded() / 10000
+        if roundedLatitude != newRoundedLat {
+            roundedLatitude = newRoundedLat
+        }
+        if roundedLongitude != newRoundedLon {
+            roundedLongitude = newRoundedLon
+        }
     }
 }
 
@@ -33,10 +48,13 @@ public class GasEntry: NSManagedObject, Identifiable {
     @NSManaged public var costPerBottle: Double
     @NSManaged public var bottleCount: Int64
     @NSManaged public var receiptData: Data?
-    // Neues Attribut, um den Belegtyp zu unterscheiden ("image" oder "pdf")
     @NSManaged public var receiptType: String?
     @NSManaged public var latitude: Double
     @NSManaged public var longitude: Double
+    
+    // Neue Felder
+    @NSManaged public var roundedLatitude: Double
+    @NSManaged public var roundedLongitude: Double
 }
 
 extension GasEntry {
@@ -44,6 +62,18 @@ extension GasEntry {
         let request: NSFetchRequest<GasEntry> = GasEntry.fetchRequest() as! NSFetchRequest<GasEntry>
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         return request
+    }
+    
+    public override func willSave() {
+        super.willSave()
+        let newRoundedLat = (latitude * 10000).rounded() / 10000
+        let newRoundedLon = (longitude * 10000).rounded() / 10000
+        if roundedLatitude != newRoundedLat {
+            roundedLatitude = newRoundedLat
+        }
+        if roundedLongitude != newRoundedLon {
+            roundedLongitude = newRoundedLon
+        }
     }
 }
 
@@ -58,6 +88,10 @@ public class ServiceEntry: NSManagedObject, Identifiable {
     @NSManaged public var longitude: Double
     @NSManaged public var receiptData: Data?
     @NSManaged public var freshWater: Double
+    
+    // Neue Felder
+    @NSManaged public var roundedLatitude: Double
+    @NSManaged public var roundedLongitude: Double
 }
 
 extension ServiceEntry {
@@ -65,6 +99,18 @@ extension ServiceEntry {
         let request: NSFetchRequest<ServiceEntry> = ServiceEntry.fetchRequest() as! NSFetchRequest<ServiceEntry>
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         return request
+    }
+    
+    public override func willSave() {
+        super.willSave()
+        let newRoundedLat = (latitude * 10000).rounded() / 10000
+        let newRoundedLon = (longitude * 10000).rounded() / 10000
+        if roundedLatitude != newRoundedLat {
+            roundedLatitude = newRoundedLat
+        }
+        if roundedLongitude != newRoundedLon {
+            roundedLongitude = newRoundedLon
+        }
     }
 }
 
@@ -78,8 +124,11 @@ public class OtherEntry: NSManagedObject, Identifiable {
     @NSManaged public var latitude: Double
     @NSManaged public var longitude: Double
     @NSManaged public var receiptData: Data?
-    // Neues Attribut, um den Belegtyp zu unterscheiden ("image" oder "pdf")
     @NSManaged public var receiptType: String?
+    
+    // Neue Felder
+    @NSManaged public var roundedLatitude: Double
+    @NSManaged public var roundedLongitude: Double
 }
 
 extension OtherEntry {
@@ -87,6 +136,18 @@ extension OtherEntry {
         let request: NSFetchRequest<OtherEntry> = OtherEntry.fetchRequest() as! NSFetchRequest<OtherEntry>
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         return request
+    }
+    
+    public override func willSave() {
+        super.willSave()
+        let newRoundedLat = (latitude * 10000).rounded() / 10000
+        let newRoundedLon = (longitude * 10000).rounded() / 10000
+        if roundedLatitude != newRoundedLat {
+            roundedLatitude = newRoundedLat
+        }
+        if roundedLongitude != newRoundedLon {
+            roundedLongitude = newRoundedLon
+        }
     }
 }
 

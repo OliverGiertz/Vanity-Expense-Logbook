@@ -10,11 +10,13 @@ private let dateFormatter: DateFormatter = {
 struct OverviewView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
+    // Nur echte Tankbelege (isDiesel == true)
     @FetchRequest(
         entity: FuelEntry.entity(),
-        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)]
+        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)],
+        predicate: NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
     ) var fuelEntries: FetchedResults<FuelEntry>
-
+    
     @FetchRequest(
         entity: GasEntry.entity(),
         sortDescriptors: [NSSortDescriptor(keyPath: \GasEntry.date, ascending: false)]
@@ -23,7 +25,7 @@ struct OverviewView: View {
     var body: some View {
         NavigationView {
             List {
-                // Obere "unsichtbare" Tabelle
+                // Obere Zusammenfassung
                 VStack(spacing: 8) {
                     HStack {
                         Text("Verbrauch / 100 km")
@@ -40,8 +42,13 @@ struct OverviewView: View {
                         Text("Tage pro Gasflasche")
                         Spacer()
                         if let daysPerBottle = calculateDaysPerGasBottle() {
-                            Text(String(format: "%.1f", daysPerBottle))
-                                .bold()
+                            if let forecast = forecastDateForGasBottle() {
+                                Text(String(format: "%.1f (~%@)", daysPerBottle, forecast))
+                                    .bold()
+                            } else {
+                                Text(String(format: "%.1f", daysPerBottle))
+                                    .bold()
+                            }
                         } else {
                             Text("Nicht genügend Daten")
                                 .bold()
@@ -57,17 +64,26 @@ struct OverviewView: View {
                         let entry = recentFuel[index]
                         NavigationLink(destination: EditFuelEntryView(fuelEntry: entry)) {
                             HStack {
+                                // Linke Seite: Datum
                                 Text("\(entry.date, formatter: dateFormatter)")
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                if let diff = fuelKmDifference(for: index, in: recentFuel) {
-                                    let consumption = (entry.liters / Double(diff)) * 100
-                                    Text("KM: \(diff), \(String(format: "%.2f L/100km", consumption))\nGesamtpreis: \(String(format: "%.2f €", entry.totalCost))")
-                                        .multilineTextAlignment(.trailing)
-                                        .frame(maxWidth: .infinity, alignment: .trailing)
-                                } else {
-                                    Text(String(format: "Gesamtpreis: %.2f €", entry.totalCost))
-                                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                
+                                // Rechte Seite: Drei Zeilen in einem VStack
+                                VStack(alignment: .trailing, spacing: 4) {
+                                    if let diff = fuelKmDifference(for: index, in: recentFuel) {
+                                        Text("\(diff) km")
+                                    } else {
+                                        Text("- km")
+                                    }
+                                    if let diff = fuelKmDifference(for: index, in: recentFuel), diff > 0 {
+                                        let consumption = (entry.liters / Double(diff)) * 100
+                                        Text("⌀ \(String(format: "%.2f", consumption)) L/100km")
+                                    } else {
+                                        Text("⌀ - L/100km")
+                                    }
+                                    Text(String(format: "%.2f €", entry.totalCost))
                                 }
+                                .frame(maxWidth: .infinity, alignment: .trailing)
                             }
                         }
                     }
@@ -78,21 +94,36 @@ struct OverviewView: View {
                     ForEach(Array(gasEntries.prefix(3)), id: \.objectID) { entry in
                         NavigationLink(destination: EditGasEntryView(gasEntry: entry)) {
                             HStack {
+                                // Linke Seite: Datum
                                 Text("\(entry.date, formatter: dateFormatter)")
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                let total = entry.costPerBottle * Double(entry.bottleCount)
-                                Text(String(format: "Gesamtpreis: %.2f €", total))
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                let bottleCount = entry.bottleCount
+                                let pricePerBottle = entry.costPerBottle
+                                let total = pricePerBottle * Double(bottleCount)
+                                VStack(alignment: .trailing, spacing: 4) {
+                                    Text("\(bottleCount) x \(String(format: "%.2f", pricePerBottle))€")
+                                    Text("= \(String(format: "%.2f", total))€")
+                                }
+                                .frame(maxWidth: .infinity, alignment: .trailing)
                             }
                         }
                     }
                 }
+            }
+            .refreshable {
+                reloadData()
             }
             .navigationTitle("Übersicht")
             .listStyle(InsetGroupedListStyle())
         }
     }
     
+    // Wird beim Pull-to-Refresh aufgerufen.
+    private func reloadData() {
+        viewContext.refreshAllObjects()
+    }
+    
+    // Durchschnittsverbrauch aus allen Tankbelegen berechnen.
     private func calculateAverageConsumption() -> Double? {
         let sortedAsc = fuelEntries.sorted { $0.date < $1.date }
         guard sortedAsc.count >= 2,
@@ -106,6 +137,7 @@ struct OverviewView: View {
         return (totalLiters / totalKm) * 100
     }
     
+    // Berechnet die Tage pro Gasflasche anhand der letzten zwei Gasbelege.
     private func calculateDaysPerGasBottle() -> Double? {
         let sortedAsc = gasEntries.sorted { $0.date < $1.date }
         guard sortedAsc.count >= 2 else { return nil }
@@ -116,11 +148,34 @@ struct OverviewView: View {
         return Double(daysDiff) / Double(last.bottleCount)
     }
     
+    // Berechnet ein voraussichtliches Datum: Letztes Gasbelegdatum plus aufgerundete durchschnittliche Tage.
+    private func forecastDateForGasBottle() -> String? {
+        let sortedAsc = gasEntries.sorted { $0.date < $1.date }
+        guard sortedAsc.count >= 2,
+              let last = sortedAsc.last,
+              let daysPerBottle = calculateDaysPerGasBottle() else { return nil }
+        let forecastDays = Int(ceil(daysPerBottle))
+        if let forecastDate = Calendar.current.date(byAdding: .day, value: forecastDays, to: last.date) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "dd.MM.yy"
+            return formatter.string(from: forecastDate)
+        }
+        return nil
+    }
+    
+    // Berechnet die gefahrenen Kilometer für einen Tankbeleg.
+    // Für Einträge, bei denen ein nachfolgender Eintrag vorhanden ist, wird dieser verwendet.
+    // Falls es sich um den letzten Eintrag handelt, wird der unmittelbar neuere (vorherige) Eintrag genutzt.
     private func fuelKmDifference(for index: Int, in entries: [FuelEntry]) -> Int64? {
         if index < entries.count - 1 {
             let current = entries[index]
             let next = entries[index + 1]
             let diff = current.currentKm - next.currentKm
+            return diff > 0 ? diff : nil
+        } else if index > 0 {
+            let current = entries[index]
+            let previous = entries[index - 1]
+            let diff = previous.currentKm - current.currentKm
             return diff > 0 ? diff : nil
         }
         return nil
