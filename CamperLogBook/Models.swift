@@ -19,6 +19,9 @@ public class FuelEntry: NSManagedObject, Identifiable {
     // Neue Felder: Gerundete GPS-Werte
     @NSManaged public var roundedLatitude: Double
     @NSManaged public var roundedLongitude: Double
+
+    // Neue Adresse-Information
+    @NSManaged public var address: String?
 }
 
 extension FuelEntry {
@@ -55,6 +58,9 @@ public class GasEntry: NSManagedObject, Identifiable {
     // Neue Felder
     @NSManaged public var roundedLatitude: Double
     @NSManaged public var roundedLongitude: Double
+
+    // Neue Adresse-Information
+    @NSManaged public var address: String?
 }
 
 extension GasEntry {
@@ -92,6 +98,9 @@ public class ServiceEntry: NSManagedObject, Identifiable {
     // Neue Felder
     @NSManaged public var roundedLatitude: Double
     @NSManaged public var roundedLongitude: Double
+
+    // Neue Adresse-Information
+    @NSManaged public var address: String?
 }
 
 extension ServiceEntry {
@@ -129,6 +138,9 @@ public class OtherEntry: NSManagedObject, Identifiable {
     // Neue Felder
     @NSManaged public var roundedLatitude: Double
     @NSManaged public var roundedLongitude: Double
+
+    // Neue Adresse-Information
+    @NSManaged public var address: String?
 }
 
 extension OtherEntry {

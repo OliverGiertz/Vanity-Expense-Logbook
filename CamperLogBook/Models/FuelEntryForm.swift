@@ -30,7 +30,7 @@ struct FuelEntryForm: View {
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
     
-    // Fehlerhandling States
+    // Fehler-Handling States
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
@@ -69,8 +69,8 @@ struct FuelEntryForm: View {
                         .disabled(true)
                 }
                 Section(header: Text("Standort")) {
-                    if let autoLocation = locationManager.lastLocation {
-                        Text("Automatisch ermittelt: Lat: \(autoLocation.coordinate.latitude), Lon: \(autoLocation.coordinate.longitude)")
+                    if let _ = locationManager.lastLocation {
+                        Text("Automatisch ermittelt: \(locationManager.address)")
                     } else if let manualLocation = selectedLocation {
                         Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
                     } else {
@@ -118,7 +118,6 @@ struct FuelEntryForm: View {
             .sheet(item: $receiptSource) { source in
                 ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
             }
-            // Fehleralert und Mailversand
             .alert(isPresented: $showErrorAlert) {
                 Alert(
                     title: Text("Fehler"),
@@ -129,9 +128,7 @@ struct FuelEntryForm: View {
                     })
                 )
             }
-            .sheet(isPresented: $showMailView, onDismiss: {
-                // Optional: Log zurücksetzen oder ähnliches
-            }) {
+            .sheet(isPresented: $showMailView) {
                 if let url = ErrorLogger.shared.getLogFileURL(),
                    let logData = try? Data(contentsOf: url) {
                     MailComposeView(
@@ -231,6 +228,7 @@ struct FuelEntryForm: View {
         newEntry.totalCost = totalCostValue
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
+        newEntry.address = locationManager.address
         if let pdfData = pdfData {
             newEntry.receiptData = pdfData
             newEntry.receiptType = "pdf"

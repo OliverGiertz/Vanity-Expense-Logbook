@@ -54,6 +54,13 @@ struct EditGasEntryView: View {
                     .submitLabel(.done)
                     .onSubmit { hideKeyboard() }
             }
+            Section(header: Text("Standort")) {
+                if let address = gasEntry.address, !address.isEmpty {
+                    Text(address)
+                } else {
+                    Text("Lat: \(gasEntry.latitude), Lon: \(gasEntry.longitude)")
+                }
+            }
             Section(header: Text("Beleg (Bild/PDF)")) {
                 if let image = receiptImage {
                     Image(uiImage: image)
@@ -122,6 +129,8 @@ struct EditGasEntryView: View {
         gasEntry.date = date
         gasEntry.costPerBottle = cost
         gasEntry.bottleCount = count
+        // Hier könnte man – falls benötigt – auch die Adresse neu ermitteln.
+        // Wir verwenden hier den bereits gespeicherten Wert.
         if let pdfData = pdfData {
             gasEntry.receiptData = pdfData
             gasEntry.receiptType = "pdf"
@@ -160,6 +169,7 @@ struct EditGasEntryView_Previews: PreviewProvider {
         entry.date = Date()
         entry.costPerBottle = 2.0
         entry.bottleCount = 3
+        entry.address = "Beispielstraße 5, 54321 Beispielstadt"
         entry.receiptType = "image"
         entry.receiptData = UIImage(systemName: "gas")?.jpegData(compressionQuality: 0.8)
         return NavigationView {

@@ -10,49 +10,61 @@ enum EntryType: String, CaseIterable, Identifiable {
 }
 
 struct EntryView: View {
+    // Standardmäßig wird "Tanken" ausgewählt, also FuelEntryForm.
     @State private var selectedEntry: EntryType = .tanken
+    @State private var navigate: Bool = false
     
     var body: some View {
         NavigationView {
-            VStack(alignment: .leading) {
-                Text("Kosten Typ auswählen:")
-                    .font(.headline)
-                    .padding(.top, 16)
-                    .padding(.horizontal)
-                
-                Picker("Eintragstyp", selection: $selectedEntry) {
-                    ForEach(EntryType.allCases) { type in
-                        Text(type.rawValue)
-                            .font(.system(size: 28, weight: .bold))
-                            .tag(type)
+            // Als Standardanzeige bleibt das FuelEntryForm
+            FuelEntryForm()
+                .navigationTitle("Kosten Eintrag")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Menu {
+                            Button("Tanken") {
+                                selectedEntry = .tanken
+                                navigate = true
+                            }
+                            Button("Gas") {
+                                selectedEntry = .gas
+                                navigate = true
+                            }
+                            Button("Ver-/Entsorgung") {
+                                selectedEntry = .service
+                                navigate = true
+                            }
+                            Button("Sonstiges") {
+                                selectedEntry = .sonstiges
+                                navigate = true
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
-                .pickerStyle(MenuPickerStyle())
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                
-                Divider()
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
-                
-                // Je nach Auswahl den entsprechenden Eingabeformular anzeigen
-                Group {
-                    switch selectedEntry {
-                    case .tanken:
-                        FuelEntryForm()
-                    case .gas:
-                        GasEntryForm()
-                    case .service:
-                        ServiceEntryForm()
-                    case .sonstiges:
-                        OtherEntryForm()
-                    }
-                }
-                .padding(.horizontal)
-                
-                Spacer()
-            }
-            .navigationTitle("Kosten Eintrag")
+                // Der versteckte NavigationLink löst die Navigation aus, wenn "navigate" true wird.
+                .background(
+                    NavigationLink(
+                        destination: destinationView(for: selectedEntry),
+                        isActive: $navigate,
+                        label: { EmptyView() }
+                    )
+                )
+        }
+    }
+    
+    @ViewBuilder
+    private func destinationView(for entry: EntryType) -> some View {
+        switch entry {
+        case .tanken:
+            FuelEntryForm()
+        case .gas:
+            GasEntryForm()
+        case .service:
+            ServiceEntryForm()
+        case .sonstiges:
+            OtherEntryForm()
         }
     }
 }

@@ -63,6 +63,13 @@ struct EditServiceEntryView: View {
                     .submitLabel(.done)
                     .onSubmit { KeyboardHelper.hideKeyboard() }
             }
+            Section(header: Text("Standort")) {
+                if let address = serviceEntry.address, !address.isEmpty {
+                    Text(address)
+                } else {
+                    Text("Lat: \(serviceEntry.latitude), Lon: \(serviceEntry.longitude)")
+                }
+            }
             // Neue Belegvorschau (falls Beleg vorhanden)
             if receiptImage != nil || pdfData != nil {
                 Section(header: Text("Belegvorschau")) {
@@ -111,6 +118,10 @@ struct EditServiceEntryView: View {
         } else {
             serviceEntry.freshWater = 0.0
         }
+        // Hier verwenden wir den bereits gespeicherten Standort (Adresse, Lat, Lon)
+        if let image = receiptImage {
+            serviceEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+        }
         do {
             try viewContext.save()
             dismiss()
@@ -140,6 +151,7 @@ struct EditServiceEntryView_Previews: PreviewProvider {
         entry.isDisposal = false
         entry.cost = 100.0
         entry.freshWater = 50.0
+        entry.address = "Beispielweg 10, 98765 Beispielstadt"
         entry.receiptData = UIImage(systemName: "doc")?.jpegData(compressionQuality: 0.8)
         return NavigationView {
             EditServiceEntryView(serviceEntry: entry)

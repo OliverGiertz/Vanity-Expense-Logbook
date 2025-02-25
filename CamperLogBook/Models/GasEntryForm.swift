@@ -45,8 +45,8 @@ struct GasEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Standort")) {
-                    if let autoLocation = locationManager.lastLocation {
-                        Text("Automatisch ermittelt: Lat: \(autoLocation.coordinate.latitude), Lon: \(autoLocation.coordinate.longitude)")
+                    if let _ = locationManager.lastLocation {
+                        Text("Automatisch ermittelt: \(locationManager.address)")
                     } else if let manualLocation = selectedLocation {
                         Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
                     } else {
@@ -102,7 +102,9 @@ struct GasEntryForm: View {
                     })
                 )
             }
-            .sheet(isPresented: $showMailView) {
+            .sheet(isPresented: $showMailView, onDismiss: {
+                // Optional: Log zurücksetzen oder ähnliches
+            }) {
                 if let url = ErrorLogger.shared.getLogFileURL(),
                    let logData = try? Data(contentsOf: url) {
                     MailComposeView(
@@ -145,6 +147,8 @@ struct GasEntryForm: View {
         newEntry.bottleCount = count
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
+        // Adresse aus dem LocationManager übernehmen
+        newEntry.address = locationManager.address
         if let pdfData = pdfData {
             newEntry.receiptData = pdfData
             newEntry.receiptType = "pdf"

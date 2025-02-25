@@ -34,11 +34,9 @@ struct ServiceEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Art der Leistung")) {
-                    // Toggle-Label angepasst zu "Versorgung"
                     Toggle("Versorgung", isOn: $isSupply)
                     Toggle("Entsorgung", isOn: $isDisposal)
                 }
-                // Falls Versorgung ausgewählt, zeige zusätzlich das Frischwasser-Feld
                 if isSupply {
                     Section(header: Text("Frischwasser")) {
                         TextField("Getankte Frischwasser (Liter)", text: $freshWaterText)
@@ -52,8 +50,8 @@ struct ServiceEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Standort")) {
-                    if let autoLocation = locationManager.lastLocation {
-                        Text("Automatisch ermittelt: Lat: \(autoLocation.coordinate.latitude), Lon: \(autoLocation.coordinate.longitude)")
+                    if let _ = locationManager.lastLocation {
+                        Text("Automatisch ermittelt: \(locationManager.address)")
                     } else if let manualLocation = selectedLocation {
                         Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
                     } else {
@@ -94,7 +92,6 @@ struct ServiceEntryForm: View {
                     LocationPickerView(selectedCoordinate: $selectedLocation)
                 }
             }
-            // Fehleralert und Mail-Versand
             .alert(isPresented: $showErrorAlert) {
                 Alert(
                     title: Text("Fehler"),
@@ -147,7 +144,7 @@ struct ServiceEntryForm: View {
         newEntry.cost = costValue
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
-        // Falls Versorgung ausgewählt, versuche den Frischwasserwert zu parsen, ansonsten 0.0
+        newEntry.address = locationManager.address
         if isSupply {
             newEntry.freshWater = Double(freshWaterText.replacingOccurrences(of: ",", with: ".")) ?? 0.0
         } else {
@@ -175,5 +172,13 @@ struct ServiceEntryForm: View {
         photoPickerItem = nil
         selectedLocation = nil
         freshWaterText = ""
+    }
+}
+
+struct ServiceEntryForm_Previews: PreviewProvider {
+    static var previews: some View {
+        ServiceEntryForm()
+            .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
+            .environmentObject(LocationManager())
     }
 }

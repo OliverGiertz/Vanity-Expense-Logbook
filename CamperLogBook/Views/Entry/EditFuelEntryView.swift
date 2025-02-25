@@ -67,6 +67,13 @@ struct EditFuelEntryView: View {
                 TextField("Gesamtkosten", text: $totalCost)
                     .disabled(true)
             }
+            Section(header: Text("Standort")) {
+                if let address = fuelEntry.address, !address.isEmpty {
+                    Text(address)
+                } else {
+                    Text("Lat: \(fuelEntry.latitude), Lon: \(fuelEntry.longitude)")
+                }
+            }
             Section(header: Text("Beleg (Bild/PDF)")) {
                 if let image = receiptImage {
                     Image(uiImage: image)
@@ -185,6 +192,7 @@ struct EditFuelEntryView_Previews: PreviewProvider {
         entry.liters = 50.0
         entry.costPerLiter = 1.5
         entry.totalCost = 75.0
+        entry.address = "Musterstraße 1, 12345 Musterstadt"
         entry.receiptType = "image"
         entry.receiptData = UIImage(systemName: "fuelpump")?.jpegData(compressionQuality: 0.8)
         return NavigationView {
