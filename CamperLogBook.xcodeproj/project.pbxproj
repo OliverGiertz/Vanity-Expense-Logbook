@@ -33,7 +33,6 @@
 		A79EA8C72D5BEA81001C1D0B /* Exceptions for "CamperLogBook" folder in "CamperLogBook" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				CoreDataHelper.swift,
 				Info.plist,
 			);
 			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
