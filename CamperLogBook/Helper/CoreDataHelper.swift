@@ -7,35 +7,78 @@ func deleteAllTestData() {
     for entity in model.entities {
         if let name = entity.name {
             let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: name)
-            let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-            deleteRequest.resultType = .resultTypeObjectIDs
+            let batchDelete = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+            batchDelete.resultType = .resultTypeObjectIDs
+            
             do {
-                let result = try context.execute(deleteRequest) as? NSBatchDeleteResult
+                let result = try context.execute(batchDelete) as? NSBatchDeleteResult
                 if let objectIDs = result?.result as? [NSManagedObjectID] {
                     let changes = [NSDeletedObjectsKey: objectIDs]
                     NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [context])
                 }
-                print("Alle Objekte in \(name) wurden gelöscht.")
+                ErrorLogger.shared.log(message: "Alle Objekte in \(name) wurden gelöscht.")
             } catch {
-                print("Fehler beim Löschen der Einträge in \(name): \(error)")
+                ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Löschen der Einträge in \(name)")
             }
         }
     }
 }
 
-func deleteFaultyOtherEntry(in context: NSManagedObjectContext) {
-    let faultyID = UUID(uuidString: "DF365B9D-5D5A-4C7C-BDFD-1C099A955968")!
-    let request: NSFetchRequest<OtherEntry> = OtherEntry.fetchRequest() as! NSFetchRequest<OtherEntry>
-    request.predicate = NSPredicate(format: "id == %@", faultyID as CVarArg)
+func deleteEntity(named entityName: String, in context: NSManagedObjectContext) -> Bool {
+    let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
+    let batchDelete = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+    batchDelete.resultType = .resultTypeObjectIDs
     
     do {
-        let entries = try context.fetch(request)
-        for entry in entries {
-            context.delete(entry)
+        let result = try context.execute(batchDelete) as? NSBatchDeleteResult
+        if let objectIDs = result?.result as? [NSManagedObjectID] {
+            let changes = [NSDeletedObjectsKey: objectIDs]
+            NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [context])
         }
-        try context.save()
-        print("Fehlerhafter OtherEntry mit ID \(faultyID) wurde gelöscht.")
+        ErrorLogger.shared.log(message: "Alle Objekte in \(entityName) wurden gelöscht.")
+        return true
     } catch {
-        print("Fehler beim Löschen des fehlerhaften OtherEntry: \(error)")
+        ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Löschen der Einträge in \(entityName)")
+        return false
     }
+}
+
+// Batch update utility
+func batchUpdate(entity: String,
+                predicate: NSPredicate? = nil,
+                updates: [String: Any],
+                in context: NSManagedObjectContext) throws -> Int {
+    let request = NSBatchUpdateRequest(entityName: entity)
+    request.predicate = predicate
+    request.propertiesToUpdate = updates
+    request.resultType = .updatedObjectIDsResultType
+    
+    let result = try context.execute(request) as? NSBatchUpdateResult
+    if let objectIDs = result?.result as? [NSManagedObjectID], !objectIDs.isEmpty {
+        let changes = [NSUpdatedObjectIDsKey: objectIDs]
+        NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [context])
+        return objectIDs.count
+    }
+    
+    return 0
+}
+
+// Optimized fetch with configurable result size
+func optimizedFetch<T: NSManagedObject>(entityName: String,
+                                       predicate: NSPredicate? = nil,
+                                       sortDescriptors: [NSSortDescriptor]? = nil,
+                                       fetchLimit: Int? = nil,
+                                       context: NSManagedObjectContext) throws -> [T] {
+    let request = NSFetchRequest<T>(entityName: entityName)
+    request.predicate = predicate
+    request.sortDescriptors = sortDescriptors
+    
+    if let limit = fetchLimit {
+        request.fetchLimit = limit
+    }
+    
+    // Enable batch fetching for large result sets
+    request.returnsObjectsAsFaults = false
+    
+    return try context.fetch(request)
 }

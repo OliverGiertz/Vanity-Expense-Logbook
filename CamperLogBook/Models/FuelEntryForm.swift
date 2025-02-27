@@ -37,6 +37,9 @@ struct FuelEntryForm: View {
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
     
+    // Loading state
+    @State private var isLoading: Bool = false
+    
     // Toggle für Standort speichern (default: aktiv)
     @State private var saveLocation: Bool = true
 
@@ -48,31 +51,53 @@ struct FuelEntryForm: View {
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
+                
                 Section(header: Text("Kraftstoffauswahl")) {
                     Toggle("Diesel", isOn: $isDiesel)
                     Toggle("AdBlue", isOn: $isAdBlue)
                 }
+                
                 Section(header: Text("Fahrzeuginformationen")) {
                     TextField("Aktueller KM Stand", text: $currentKm)
                         .keyboardType(.numberPad)
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: currentKm) { _, _ in updateKmDifference() }
+                    
+                    if let diff = kmDifference {
+                        HStack {
+                            Text("Gefahrene Kilometer:")
+                            Spacer()
+                            Text("\(diff) km").bold()
+                        }
+                    }
+                    
+                    if let consumption = consumptionPer100km {
+                        HStack {
+                            Text("Verbrauch pro 100km:")
+                            Spacer()
+                            Text(String(format: "%.2f L", consumption)).bold()
+                        }
+                    }
                 }
+                
                 Section(header: Text("Tankdaten")) {
                     TextField("Getankte Liter", text: $liters)
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: liters) { _, _ in computeTotalCost() }
+                    
                     TextField("Kosten pro Liter", text: $costPerLiter)
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: costPerLiter) { _, _ in computeTotalCost() }
+                    
                     TextField("Gesamtkosten", text: $totalCost)
                         .disabled(true)
                 }
+                
                 Section(header: Text("Standort")) {
                     Toggle("Standort speichern", isOn: $saveLocation)
                     if saveLocation {
@@ -92,6 +117,7 @@ struct FuelEntryForm: View {
                         Text("Standort wird nicht gespeichert")
                     }
                 }
+                
                 Section(header: Text("Beleg (Bild/PDF)")) {
                     if let image = receiptImage {
                         Image(uiImage: image)
@@ -104,6 +130,7 @@ struct FuelEntryForm: View {
                             .scaledToFit()
                             .frame(height: 150)
                     }
+                    
                     Button("Beleg auswählen") {
                         showingReceiptOptions = true
                     }
@@ -114,7 +141,20 @@ struct FuelEntryForm: View {
                         Button("Abbrechen", role: .cancel) { }
                     }
                 }
-                Button("Speichern") { saveEntry() }
+                
+                Button(action: {
+                    isLoading = true
+                    saveEntry()
+                }) {
+                    HStack {
+                        Text("Speichern")
+                        if isLoading {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(isLoading)
             }
             .navigationTitle("Tankbeleg")
             .sheet(isPresented: $showLocationPicker) {
@@ -169,9 +209,11 @@ struct FuelEntryForm: View {
             consumptionPer100km = nil
             return
         }
+        
         let fetchRequest = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         fetchRequest.fetchLimit = 1
+        
         do {
             let previousEntries = try viewContext.fetch(fetchRequest)
             if let previous = previousEntries.first {
@@ -224,17 +266,22 @@ struct FuelEntryForm: View {
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
         newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
+        
+        // Compress and optimize receipt image before saving
         if let pdf = pdfData {
             newEntry.receiptData = pdf
             newEntry.receiptType = "pdf"
         } else if let image = receiptImage {
-            newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+            let compressedImage = image.compressedForStorage()
+            newEntry.receiptData = compressedImage.jpegData(compressionQuality: 0.7)
             newEntry.receiptType = "image"
         }
+        
         let fetchRequest = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         fetchRequest.fetchOffset = 1
         fetchRequest.fetchLimit = 1
+        
         do {
             let previousEntries = try viewContext.fetch(fetchRequest)
             if let previous = previousEntries.first {
@@ -249,14 +296,17 @@ struct FuelEntryForm: View {
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Error fetching previous fuel entry in FuelEntryForm")
         }
+        
         do {
             try viewContext.save()
             ErrorLogger.shared.log(message: "Eintrag erfolgreich gespeichert in FuelEntryForm")
             clearFields()
+            isLoading = false
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Speichern in FuelEntryForm")
             errorAlertMessage = "Fehler beim Speichern: \(error.localizedDescription)"
             showErrorAlert = true
+            isLoading = false
         }
     }
     

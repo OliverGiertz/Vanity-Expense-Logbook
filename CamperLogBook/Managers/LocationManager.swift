@@ -11,11 +11,23 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     override init() {
         super.init()
+        setupLocationManager()
+    }
+    
+    private func setupLocationManager() {
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Less accurate but sufficient for city-level locations
+        locationManager.distanceFilter = 100 // Only update when moved 100 meters
         // Benutzer um Erlaubnis bitten
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
+    }
+    
+    // Add method to request more accurate updates when needed
+    func requestPreciseLocation() {
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = kCLDistanceFilterNone
+        locationManager.requestLocation() // Request single update
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
