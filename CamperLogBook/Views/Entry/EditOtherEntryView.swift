@@ -32,10 +32,13 @@ struct EditOtherEntryView: View {
         _category = State(initialValue: otherEntry.category)
         _details = State(initialValue: otherEntry.details ?? "")
         _cost = State(initialValue: String(otherEntry.cost))
-        if otherEntry.receiptType == "image", let data = otherEntry.receiptData, let image = UIImage(data: data) {
+        if otherEntry.receiptType == "image",
+           let data = otherEntry.receiptData,
+           let image = UIImage(data: data) {
             _receiptImage = State(initialValue: image)
             _pdfData = State(initialValue: nil)
-        } else if otherEntry.receiptType == "pdf", let data = otherEntry.receiptData {
+        } else if otherEntry.receiptType == "pdf",
+                  let data = otherEntry.receiptData {
             _receiptImage = State(initialValue: nil)
             _pdfData = State(initialValue: data)
         } else {
@@ -58,7 +61,6 @@ struct EditOtherEntryView: View {
             Section(header: Text("Kosten")) {
                 TextField("Kosten", text: $cost)
                     .keyboardType(.decimalPad)
-                    .submitLabel(.done)
             }
             Section(header: Text("Beleg (Bild/PDF)")) {
                 if let image = receiptImage {
@@ -73,6 +75,9 @@ struct EditOtherEntryView: View {
                         .frame(height: 150)
                 }
                 Button("Beleg ändern") {
+                    // Vor dem Starten der Auswahl die vorhandenen Beleg-Daten löschen
+                    receiptImage = nil
+                    pdfData = nil
                     showingReceiptOptions = true
                 }
                 .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
@@ -82,7 +87,6 @@ struct EditOtherEntryView: View {
                     Button("Abbrechen", role: .cancel) { }
                 }
             }
-            // Neue Belegvorschau
             if receiptImage != nil || pdfData != nil {
                 Section(header: Text("Belegvorschau")) {
                     Button(action: { showReceiptDetail = true }) {
@@ -120,7 +124,6 @@ struct EditOtherEntryView: View {
                 ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
             }
         }
-        // Fehleralert und Mailversand (wie gehabt)
         .alert(isPresented: $showErrorAlert) {
             Alert(
                 title: Text("Fehler"),
@@ -132,8 +135,7 @@ struct EditOtherEntryView: View {
             )
         }
         .sheet(isPresented: $showMailView) {
-            if let url = ErrorLogger.shared.getLogFileURL(),
-               let logData = try? Data(contentsOf: url) {
+            if let url = ErrorLogger.shared.getLogFileURL(), let logData = try? Data(contentsOf: url) {
                 MailComposeView(
                     recipients: ["logfile@vanityontour.de"],
                     subject: "Fehlerlog",
@@ -147,7 +149,7 @@ struct EditOtherEntryView: View {
             }
         }
     }
-
+    
     private func saveChanges() {
         guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else { return }
         otherEntry.date = date

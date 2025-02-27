@@ -1,6 +1,14 @@
+//
+//  EditFuelEntryView.swift
+//  CamperLogBook
+//
+//  Created by Oliver Giertz on 16.02.25.
+//
+
 import SwiftUI
 import CoreData
 import PhotosUI
+import CoreLocation
 
 struct EditFuelEntryView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -24,6 +32,12 @@ struct EditFuelEntryView: View {
     
     // Neuer State für die Belegvorschau
     @State private var showReceiptDetail = false
+    
+    // Neue States für den Standort in der Bearbeitung
+    @State private var saveLocation: Bool
+    @State private var manualLocation: CLLocationCoordinate2D?
+    @State private var manualAddress: String = ""
+    @State private var showLocationPicker: Bool = false
 
     init(fuelEntry: FuelEntry) {
         self.fuelEntry = fuelEntry
@@ -34,13 +48,22 @@ struct EditFuelEntryView: View {
         _liters = State(initialValue: String(fuelEntry.liters))
         _costPerLiter = State(initialValue: String(fuelEntry.costPerLiter))
         _totalCost = State(initialValue: String(fuelEntry.totalCost))
-        if fuelEntry.receiptType == "image", let data = fuelEntry.receiptData, let image = UIImage(data: data) {
+        if fuelEntry.receiptType == "image",
+           let data = fuelEntry.receiptData,
+           let image = UIImage(data: data) {
             _receiptImage = State(initialValue: image)
-        } else if fuelEntry.receiptType == "pdf", let data = fuelEntry.receiptData {
+        } else if fuelEntry.receiptType == "pdf",
+                  let data = fuelEntry.receiptData {
             _pdfData = State(initialValue: data)
         } else {
             _receiptImage = State(initialValue: nil)
             _pdfData = State(initialValue: nil)
+        }
+        _saveLocation = State(initialValue: fuelEntry.latitude != 0)
+        if fuelEntry.latitude != 0 {
+            _manualLocation = State(initialValue: CLLocationCoordinate2D(latitude: fuelEntry.latitude, longitude: fuelEntry.longitude))
+        } else {
+            _manualLocation = State(initialValue: nil)
         }
     }
 
@@ -68,10 +91,22 @@ struct EditFuelEntryView: View {
                     .disabled(true)
             }
             Section(header: Text("Standort")) {
-                if let address = fuelEntry.address, !address.isEmpty {
-                    Text(address)
+                Toggle("Standort speichern", isOn: $saveLocation)
+                if saveLocation {
+                    if !manualAddress.isEmpty {
+                        Text("Manuell ausgewählt: \(manualAddress)")
+                    } else if let loc = manualLocation {
+                        Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
+                    } else if let address = fuelEntry.address, !address.isEmpty {
+                        Text(address)
+                    } else {
+                        Text("Kein Standort ausgewählt")
+                    }
+                    Button("Standort manuell auswählen") {
+                        showLocationPicker = true
+                    }
                 } else {
-                    Text("Lat: \(fuelEntry.latitude), Lon: \(fuelEntry.longitude)")
+                    Text("Standort wird nicht gespeichert")
                 }
             }
             Section(header: Text("Beleg (Bild/PDF)")) {
@@ -87,6 +122,9 @@ struct EditFuelEntryView: View {
                         .frame(height: 150)
                 }
                 Button("Beleg ändern") {
+                    // Alte Beleg-Daten löschen, um neue Auswahl zu ermöglichen
+                    receiptImage = nil
+                    pdfData = nil
                     showingReceiptOptions = true
                 }
                 .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
@@ -96,7 +134,6 @@ struct EditFuelEntryView: View {
                     Button("Abbrechen", role: .cancel) { }
                 }
             }
-            // Neue Belegvorschau
             if receiptImage != nil || pdfData != nil {
                 Section(header: Text("Belegvorschau")) {
                     Button(action: { showReceiptDetail = true }) {
@@ -126,29 +163,26 @@ struct EditFuelEntryView: View {
             }
         }
         .navigationTitle("Eintrag bearbeiten")
+        .sheet(isPresented: $showLocationPicker) {
+            NavigationView {
+                LocationPickerView(selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
+            }
+        }
         .sheet(item: $receiptSource) { source in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
-        .sheet(isPresented: $showReceiptDetail) {
-            NavigationView {
-                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
-            }
         }
     }
     
     private func saveChanges() {
-        guard let currentKmValue = Int64(currentKm),
-              let litersValue = Double(liters),
-              let costValue = Double(costPerLiter) else {
-            return
-        }
-        let computedTotal = litersValue * costValue
+        guard let costValue = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")),
+              let currentKmValue = Int64(currentKm) else { return }
         fuelEntry.date = date
         fuelEntry.isDiesel = isDiesel
         fuelEntry.isAdBlue = isAdBlue
         fuelEntry.currentKm = currentKmValue
-        fuelEntry.liters = litersValue
+        fuelEntry.liters = Double(liters) ?? 0.0
         fuelEntry.costPerLiter = costValue
+        let computedTotal = (Double(liters) ?? 0.0) * costValue
         fuelEntry.totalCost = computedTotal
         if let pdfData = pdfData {
             fuelEntry.receiptData = pdfData
@@ -157,11 +191,24 @@ struct EditFuelEntryView: View {
             fuelEntry.receiptData = image.jpegData(compressionQuality: 0.8)
             fuelEntry.receiptType = "image"
         }
+        if saveLocation {
+            if let loc = manualLocation {
+                fuelEntry.latitude = loc.latitude
+                fuelEntry.longitude = loc.longitude
+            }
+            if !manualAddress.isEmpty {
+                fuelEntry.address = manualAddress
+            }
+        } else {
+            fuelEntry.latitude = 0
+            fuelEntry.longitude = 0
+            fuelEntry.address = ""
+        }
         do {
             try viewContext.save()
             dismiss()
         } catch {
-            print("Fehler beim Speichern: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Speichern EditFuelEntryView")
         }
     }
     
@@ -171,12 +218,13 @@ struct EditFuelEntryView: View {
             try viewContext.save()
             dismiss()
         } catch {
-            print("Fehler beim Löschen: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Löschen EditFuelEntryView")
         }
     }
     
     private func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                          to: nil, from: nil, for: nil)
     }
 }
 
@@ -195,6 +243,8 @@ struct EditFuelEntryView_Previews: PreviewProvider {
         entry.address = "Musterstraße 1, 12345 Musterstadt"
         entry.receiptType = "image"
         entry.receiptData = UIImage(systemName: "fuelpump")?.jpegData(compressionQuality: 0.8)
+        entry.latitude = 51.0
+        entry.longitude = 7.0
         return NavigationView {
             EditFuelEntryView(fuelEntry: entry)
         }

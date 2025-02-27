@@ -13,17 +13,27 @@ struct ServiceEntryForm: View {
     @State private var cost: String = ""
     @State private var receiptImage: UIImage?
     @State private var photoPickerItem: PhotosPickerItem?
-    
-    @State private var selectedLocation: CLLocationCoordinate2D? = nil
-    @State private var showLocationPicker: Bool = false
+    @State private var pdfData: Data? = nil  // Falls benötigt
     
     // Neuer State für Frischwasser-Eingabe
     @State private var freshWaterText: String = ""
     
-    // Fehlerhandling States
+    // Neue States für manuellen Standort
+    @State private var selectedLocation: CLLocationCoordinate2D? = nil
+    @State private var manualAddress: String = ""
+    @State private var showLocationPicker: Bool = false
+    
+    // Zustände für Beleg-Auswahl
+    @State private var showingReceiptOptions = false
+    @State private var receiptSource: ReceiptSource? = nil
+    
+    // Fehlerhandling
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
+
+    // Toggle für Standort speichern (default: aktiv)
+    @State private var saveLocation: Bool = true
 
     var body: some View {
         NavigationView {
@@ -50,15 +60,22 @@ struct ServiceEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Standort")) {
-                    if let _ = locationManager.lastLocation {
-                        Text("Automatisch ermittelt: \(locationManager.address)")
-                    } else if let manualLocation = selectedLocation {
-                        Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
-                    } else {
-                        Text("Kein Standort ermittelt")
+                    Toggle("Standort speichern", isOn: $saveLocation)
+                    if saveLocation {
+                        if !manualAddress.isEmpty {
+                            Text("Manuell ausgewählt: \(manualAddress)")
+                        } else if let _ = locationManager.lastLocation {
+                            Text("Automatisch ermittelt: \(locationManager.address)")
+                        } else if let manualLocation = selectedLocation {
+                            Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
+                        } else {
+                            Text("Kein Standort ermittelt")
+                        }
                         Button("Standort manuell auswählen") {
                             showLocationPicker = true
                         }
+                    } else {
+                        Text("Standort wird nicht gespeichert")
                     }
                 }
                 Section(header: Text("Beleg (Bild/PDF)")) {
@@ -89,18 +106,8 @@ struct ServiceEntryForm: View {
             .navigationTitle("Ver-/Entsorgung")
             .sheet(isPresented: $showLocationPicker) {
                 NavigationView {
-                    LocationPickerView(selectedCoordinate: $selectedLocation)
+                    LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
                 }
-            }
-            .alert(isPresented: $showErrorAlert) {
-                Alert(
-                    title: Text("Fehler"),
-                    message: Text(errorAlertMessage),
-                    primaryButton: .default(Text("OK")),
-                    secondaryButton: .default(Text("Log senden"), action: {
-                        showMailView = true
-                    })
-                )
             }
             .sheet(isPresented: $showMailView) {
                 if let url = ErrorLogger.shared.getLogFileURL(),
@@ -117,6 +124,19 @@ struct ServiceEntryForm: View {
                     Text("Logdatei nicht verfügbar.")
                 }
             }
+            .sheet(item: $receiptSource) { source in
+                ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+            }
+            .alert(isPresented: $showErrorAlert) {
+                Alert(
+                    title: Text("Fehler"),
+                    message: Text(errorAlertMessage),
+                    primaryButton: .default(Text("OK")),
+                    secondaryButton: .default(Text("Log senden"), action: {
+                        showMailView = true
+                    })
+                )
+            }
         }
     }
     
@@ -128,13 +148,17 @@ struct ServiceEntryForm: View {
         }
         
         let chosenLocation: CLLocation
-        if let autoLocation = locationManager.lastLocation {
-            chosenLocation = autoLocation
-        } else if let manualLocation = selectedLocation {
-            chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
+        if saveLocation {
+            if let autoLocation = locationManager.lastLocation {
+                chosenLocation = autoLocation
+            } else if let manualLocation = selectedLocation {
+                chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
+            } else {
+                chosenLocation = CLLocation(latitude: 0, longitude: 0)
+                ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in ServiceEntryForm")
+            }
         } else {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
-            ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in ServiceEntryForm")
         }
         let newEntry = ServiceEntry(context: viewContext)
         newEntry.id = UUID()
@@ -144,7 +168,7 @@ struct ServiceEntryForm: View {
         newEntry.cost = costValue
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
-        newEntry.address = locationManager.address
+        newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
         if isSupply {
             newEntry.freshWater = Double(freshWaterText.replacingOccurrences(of: ",", with: ".")) ?? 0.0
         } else {
@@ -155,23 +179,10 @@ struct ServiceEntryForm: View {
         }
         do {
             try viewContext.save()
-            clearFields()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern ServiceEntry in ServiceEntryForm")
-            errorAlertMessage = "Fehler beim Speichern des Service-Eintrags: \(error.localizedDescription)"
             showErrorAlert = true
         }
-    }
-    
-    private func clearFields() {
-        date = Date()
-        isSupply = false
-        isDisposal = false
-        cost = ""
-        receiptImage = nil
-        photoPickerItem = nil
-        selectedLocation = nil
-        freshWaterText = ""
     }
 }
 

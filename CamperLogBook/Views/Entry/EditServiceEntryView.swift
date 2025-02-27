@@ -1,5 +1,13 @@
+//
+//  EditServiceEntryView.swift
+//  CamperLogBook
+//
+//  Created by Oliver Giertz on 16.02.25.
+//
+
 import SwiftUI
 import CoreData
+import CoreLocation
 
 struct EditServiceEntryView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -18,6 +26,13 @@ struct EditServiceEntryView: View {
     
     // Neuer State für die Belegvorschau
     @State private var showReceiptDetail = false
+    
+    // Neue States für Standort in der Bearbeitung
+    @State private var saveLocation: Bool
+    @State private var manualLocation: CLLocationCoordinate2D?
+    // Neuer State für die manuelle Adresse
+    @State private var manualAddress: String = ""
+    @State private var showLocationPicker: Bool = false
 
     init(serviceEntry: ServiceEntry) {
         self.serviceEntry = serviceEntry
@@ -37,6 +52,12 @@ struct EditServiceEntryView: View {
         } else {
             _receiptImage = State(initialValue: nil)
             _pdfData = State(initialValue: nil)
+        }
+        _saveLocation = State(initialValue: serviceEntry.latitude != 0)
+        if serviceEntry.latitude != 0 {
+            _manualLocation = State(initialValue: CLLocationCoordinate2D(latitude: serviceEntry.latitude, longitude: serviceEntry.longitude))
+        } else {
+            _manualLocation = State(initialValue: nil)
         }
     }
 
@@ -64,13 +85,24 @@ struct EditServiceEntryView: View {
                     .onSubmit { KeyboardHelper.hideKeyboard() }
             }
             Section(header: Text("Standort")) {
-                if let address = serviceEntry.address, !address.isEmpty {
-                    Text(address)
+                Toggle("Standort speichern", isOn: $saveLocation)
+                if saveLocation {
+                    if !manualAddress.isEmpty {
+                        Text("Manuell ausgewählt: \(manualAddress)")
+                    } else if let loc = manualLocation {
+                        Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
+                    } else if let address = serviceEntry.address, !address.isEmpty {
+                        Text(address)
+                    } else {
+                        Text("Kein Standort ausgewählt")
+                    }
+                    Button("Standort manuell auswählen") {
+                        showLocationPicker = true
+                    }
                 } else {
-                    Text("Lat: \(serviceEntry.latitude), Lon: \(serviceEntry.longitude)")
+                    Text("Standort wird nicht gespeichert")
                 }
             }
-            // Neue Belegvorschau (falls Beleg vorhanden)
             if receiptImage != nil || pdfData != nil {
                 Section(header: Text("Belegvorschau")) {
                     Button(action: { showReceiptDetail = true }) {
@@ -100,9 +132,10 @@ struct EditServiceEntryView: View {
             }
         }
         .navigationTitle("Ver-/Entsorgung bearbeiten")
-        .sheet(isPresented: $showReceiptDetail) {
+        .sheet(isPresented: $showLocationPicker) {
             NavigationView {
-                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
+                // Hier wird sowohl der ausgewählte Koordinate als auch die Adresse übergeben
+                LocationPickerView(selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
             }
         }
     }
@@ -118,9 +151,19 @@ struct EditServiceEntryView: View {
         } else {
             serviceEntry.freshWater = 0.0
         }
-        // Hier verwenden wir den bereits gespeicherten Standort (Adresse, Lat, Lon)
         if let image = receiptImage {
             serviceEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+        }
+        if saveLocation {
+            if let loc = manualLocation {
+                serviceEntry.latitude = loc.latitude
+                serviceEntry.longitude = loc.longitude
+            }
+            // Behalte vorhandene Adresse, falls manuell gesetzt wurde; ansonsten wird der ServiceEntry.address unverändert.
+        } else {
+            serviceEntry.latitude = 0
+            serviceEntry.longitude = 0
+            serviceEntry.address = ""
         }
         do {
             try viewContext.save()
@@ -153,6 +196,8 @@ struct EditServiceEntryView_Previews: PreviewProvider {
         entry.freshWater = 50.0
         entry.address = "Beispielweg 10, 98765 Beispielstadt"
         entry.receiptData = UIImage(systemName: "doc")?.jpegData(compressionQuality: 0.8)
+        entry.latitude = 52.0
+        entry.longitude = 13.0
         return NavigationView {
             EditServiceEntryView(serviceEntry: entry)
         }

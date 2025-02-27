@@ -7,7 +7,7 @@ import CoreLocation
 struct FuelEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var locationManager: LocationManager
-    
+
     @State private var date = Date()
     @State private var isDiesel: Bool = true
     @State private var isAdBlue: Bool = false
@@ -23,17 +23,22 @@ struct FuelEntryForm: View {
     
     @State private var errorMessage: String?
     
+    // Neuer State für manuellen Standort
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
+    @State private var manualAddress: String = ""
     @State private var showLocationPicker: Bool = false
     
-    // DRY – einheitliche Zustände für die Beleg-Auswahl
+    // Zustände für Beleg-Auswahl
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
     
-    // Fehler-Handling States
+    // Fehlerhandling
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
+    
+    // Toggle für Standort speichern (default: aktiv)
+    @State private var saveLocation: Bool = true
 
     var body: some View {
         NavigationView {
@@ -69,13 +74,22 @@ struct FuelEntryForm: View {
                         .disabled(true)
                 }
                 Section(header: Text("Standort")) {
-                    if let _ = locationManager.lastLocation {
-                        Text("Automatisch ermittelt: \(locationManager.address)")
-                    } else if let manualLocation = selectedLocation {
-                        Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
+                    Toggle("Standort speichern", isOn: $saveLocation)
+                    if saveLocation {
+                        if !manualAddress.isEmpty {
+                            Text("Manuell ausgewählt: \(manualAddress)")
+                        } else if let _ = locationManager.lastLocation {
+                            Text("Automatisch ermittelt: \(locationManager.address)")
+                        } else if let loc = selectedLocation {
+                            Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
+                        } else {
+                            Text("Kein Standort ermittelt")
+                        }
+                        Button("Standort manuell auswählen") {
+                            showLocationPicker = true
+                        }
                     } else {
-                        Text("Kein Standort ermittelt")
-                        Button("Standort manuell auswählen") { showLocationPicker = true }
+                        Text("Standort wird nicht gespeichert")
                     }
                 }
                 Section(header: Text("Beleg (Bild/PDF)")) {
@@ -100,20 +114,13 @@ struct FuelEntryForm: View {
                         Button("Abbrechen", role: .cancel) { }
                     }
                 }
-                if let kmDiff = kmDifference, let consumption = consumptionPer100km {
-                    Section(header: Text("Zusätzliche Infos")) {
-                        Text("Gefahrene KM seit letztem Tanken: \(kmDiff)")
-                        Text(String(format: "Durchschnittsverbrauch: %.2f L/100 km", consumption))
-                    }
-                }
-                if let error = errorMessage {
-                    Section { Text(error).foregroundColor(.red) }
-                }
                 Button("Speichern") { saveEntry() }
             }
             .navigationTitle("Tankbeleg")
             .sheet(isPresented: $showLocationPicker) {
-                NavigationView { LocationPickerView(selectedCoordinate: $selectedLocation) }
+                NavigationView {
+                    LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
+                }
             }
             .sheet(item: $receiptSource) { source in
                 ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
@@ -188,49 +195,37 @@ struct FuelEntryForm: View {
     
     private func saveEntry() {
         errorMessage = nil
-        guard let currentKmValue = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) else {
-            errorMessage = "Ungültiger KM-Stand: \(currentKm)"
-            ErrorLogger.shared.log(message: errorMessage!)
-            return
-        }
-        guard let litersValue = Double(liters.replacingOccurrences(of: ",", with: ".")) else {
-            errorMessage = "Ungültige Literzahl: \(liters)"
-            ErrorLogger.shared.log(message: errorMessage!)
-            return
-        }
-        guard let costPerLiterValue = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")) else {
-            errorMessage = "Ungültiger Preis pro Liter: \(costPerLiter)"
-            ErrorLogger.shared.log(message: errorMessage!)
-            return
-        }
-        guard let totalCostValue = Double(totalCost.replacingOccurrences(of: ",", with: ".")) else {
-            errorMessage = "Ungültige Gesamtkosten: \(totalCost)"
-            ErrorLogger.shared.log(message: errorMessage!)
-            return
-        }
+        let costText = totalCost.replacingOccurrences(of: ",", with: ".")
+        guard let costValue = Double(costText) else { return }
+        
         let chosenLocation: CLLocation
-        if let autoLocation = locationManager.lastLocation {
-            chosenLocation = autoLocation
-        } else if let manualLocation = selectedLocation {
-            chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
+        if saveLocation {
+            if let autoLocation = locationManager.lastLocation {
+                chosenLocation = autoLocation
+            } else if let manual = selectedLocation {
+                chosenLocation = CLLocation(latitude: manual.latitude, longitude: manual.longitude)
+            } else {
+                chosenLocation = CLLocation(latitude: 0, longitude: 0)
+                ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in FuelEntryForm")
+            }
         } else {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
-            ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in FuelEntryForm")
         }
+        
         let newEntry = FuelEntry(context: viewContext)
         newEntry.id = UUID()
         newEntry.date = date
         newEntry.isDiesel = isDiesel
         newEntry.isAdBlue = isAdBlue
-        newEntry.currentKm = currentKmValue
-        newEntry.liters = litersValue
-        newEntry.costPerLiter = costPerLiterValue
-        newEntry.totalCost = totalCostValue
+        newEntry.currentKm = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) ?? 0
+        newEntry.liters = Double(liters.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        newEntry.costPerLiter = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        newEntry.totalCost = costValue
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
-        newEntry.address = locationManager.address
-        if let pdfData = pdfData {
-            newEntry.receiptData = pdfData
+        newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
+        if let pdf = pdfData {
+            newEntry.receiptData = pdf
             newEntry.receiptType = "pdf"
         } else if let image = receiptImage {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
@@ -246,7 +241,9 @@ struct FuelEntryForm: View {
                 let kmDiff = newEntry.currentKm - previous.currentKm
                 kmDifference = kmDiff
                 if kmDiff > 0 {
-                    consumptionPer100km = (litersValue / Double(kmDiff)) * 100
+                    if let litersValue = Double(liters.replacingOccurrences(of: ",", with: ".")) {
+                        consumptionPer100km = (litersValue / Double(kmDiff)) * 100
+                    }
                 }
             }
         } catch {
@@ -265,6 +262,7 @@ struct FuelEntryForm: View {
     
     private func clearFields() {
         date = Date()
+        isDiesel = true
         isAdBlue = false
         currentKm = ""
         liters = ""
@@ -273,6 +271,7 @@ struct FuelEntryForm: View {
         receiptImage = nil
         pdfData = nil
         selectedLocation = nil
+        manualAddress = ""
     }
 }
 

@@ -15,6 +15,8 @@ struct GasEntryForm: View {
     @State private var pdfData: Data?
     
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
+    // Neuer State für die manuelle Adresse
+    @State private var manualAddress: String = ""
     @State private var showLocationPicker: Bool = false
     
     // DRY – einheitliche Zustände für die Beleg-Auswahl
@@ -25,6 +27,9 @@ struct GasEntryForm: View {
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
+
+    // Neuer State: Toggle für Standort speichern (default: aktiv)
+    @State private var saveLocation: Bool = true
 
     var body: some View {
         NavigationView {
@@ -45,15 +50,20 @@ struct GasEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Standort")) {
-                    if let _ = locationManager.lastLocation {
-                        Text("Automatisch ermittelt: \(locationManager.address)")
-                    } else if let manualLocation = selectedLocation {
-                        Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
-                    } else {
-                        Text("Kein Standort ermittelt")
-                        Button("Standort manuell auswählen") {
-                            showLocationPicker = true
+                    Toggle("Standort speichern", isOn: $saveLocation)
+                    if saveLocation {
+                        if !manualAddress.isEmpty {
+                            Text("Manuell ausgewählt: \(manualAddress)")
+                        } else if let _ = locationManager.lastLocation {
+                            Text("Automatisch ermittelt: \(locationManager.address)")
+                        } else if let manualLocation = selectedLocation {
+                            Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
+                        } else {
+                            Text("Kein Standort ermittelt")
                         }
+                        Button("Standort manuell auswählen") { showLocationPicker = true }
+                    } else {
+                        Text("Standort wird nicht gespeichert")
                     }
                 }
                 Section(header: Text("Beleg (Bild/PDF)")) {
@@ -78,20 +88,17 @@ struct GasEntryForm: View {
                         Button("Abbrechen", role: .cancel) { }
                     }
                 }
-                Button("Speichern") {
-                    saveEntry()
-                }
+                Button("Speichern") { saveEntry() }
             }
             .navigationTitle("Gasbeleg")
             .sheet(isPresented: $showLocationPicker) {
                 NavigationView {
-                    LocationPickerView(selectedCoordinate: $selectedLocation)
+                    LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
                 }
             }
             .sheet(item: $receiptSource) { source in
                 ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
             }
-            // Fehleralert und Mailversand
             .alert(isPresented: $showErrorAlert) {
                 Alert(
                     title: Text("Fehler"),
@@ -102,9 +109,7 @@ struct GasEntryForm: View {
                     })
                 )
             }
-            .sheet(isPresented: $showMailView, onDismiss: {
-                // Optional: Log zurücksetzen oder ähnliches
-            }) {
+            .sheet(isPresented: $showMailView) {
                 if let url = ErrorLogger.shared.getLogFileURL(),
                    let logData = try? Data(contentsOf: url) {
                     MailComposeView(
@@ -131,15 +136,18 @@ struct GasEntryForm: View {
             return
         }
         let chosenLocation: CLLocation
-        if let autoLocation = locationManager.lastLocation {
-            chosenLocation = autoLocation
-        } else if let manualLocation = selectedLocation {
-            chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
+        if saveLocation {
+            if let autoLocation = locationManager.lastLocation {
+                chosenLocation = autoLocation
+            } else if let manual = selectedLocation {
+                chosenLocation = CLLocation(latitude: manual.latitude, longitude: manual.longitude)
+            } else {
+                chosenLocation = CLLocation(latitude: 0, longitude: 0)
+                ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in GasEntryForm")
+            }
         } else {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
-            ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in GasEntryForm")
         }
-        
         let newEntry = GasEntry(context: viewContext)
         newEntry.id = UUID()
         newEntry.date = date
@@ -147,14 +155,26 @@ struct GasEntryForm: View {
         newEntry.bottleCount = count
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
-        // Adresse aus dem LocationManager übernehmen
-        newEntry.address = locationManager.address
+        // Verwende manuelle Adresse, wenn vorhanden, sonst die automatisch ermittelte Adresse
+        newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
         if let pdfData = pdfData {
             newEntry.receiptData = pdfData
             newEntry.receiptType = "pdf"
         } else if let image = receiptImage {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
             newEntry.receiptType = "image"
+        }
+        let fetchRequest = GasEntry.fetchRequest() as! NSFetchRequest<GasEntry>
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+        fetchRequest.fetchOffset = 1
+        fetchRequest.fetchLimit = 1
+        do {
+            let previousEntries = try viewContext.fetch(fetchRequest)
+            if let _ = previousEntries.first {
+                // Optionale Berechnungen könnten hier erfolgen.
+            }
+        } catch {
+            ErrorLogger.shared.log(error: error, additionalInfo: "Error fetching previous gas entry in GasEntryForm")
         }
         do {
             try viewContext.save()
@@ -174,6 +194,7 @@ struct GasEntryForm: View {
         receiptImage = nil
         pdfData = nil
         selectedLocation = nil
+        manualAddress = ""
     }
 }
 

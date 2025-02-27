@@ -1,5 +1,13 @@
+//
+//  EditGasEntryView.swift
+//  CamperLogBook
+//
+//  Created by Oliver Giertz on 16.02.25.
+//
+
 import SwiftUI
 import CoreData
+import CoreLocation
 
 struct EditGasEntryView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -19,6 +27,12 @@ struct EditGasEntryView: View {
     
     // Neuer State für die Belegvorschau
     @State private var showReceiptDetail = false
+    
+    // Neue States für Standort in der Bearbeitung
+    @State private var saveLocation: Bool
+    @State private var manualLocation: CLLocationCoordinate2D?
+    @State private var manualAddress: String = ""
+    @State private var showLocationPicker: Bool = false
 
     init(gasEntry: GasEntry) {
         self.gasEntry = gasEntry
@@ -34,6 +48,12 @@ struct EditGasEntryView: View {
         } else {
             _receiptImage = State(initialValue: nil)
             _pdfData = State(initialValue: nil)
+        }
+        _saveLocation = State(initialValue: gasEntry.latitude != 0)
+        if gasEntry.latitude != 0 {
+            _manualLocation = State(initialValue: CLLocationCoordinate2D(latitude: gasEntry.latitude, longitude: gasEntry.longitude))
+        } else {
+            _manualLocation = State(initialValue: nil)
         }
     }
 
@@ -55,10 +75,22 @@ struct EditGasEntryView: View {
                     .onSubmit { hideKeyboard() }
             }
             Section(header: Text("Standort")) {
-                if let address = gasEntry.address, !address.isEmpty {
-                    Text(address)
+                Toggle("Standort speichern", isOn: $saveLocation)
+                if saveLocation {
+                    if !manualAddress.isEmpty {
+                        Text("Manuell ausgewählt: \(manualAddress)")
+                    } else if let loc = manualLocation {
+                        Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
+                    } else if let address = gasEntry.address, !address.isEmpty {
+                        Text(address)
+                    } else {
+                        Text("Kein Standort ausgewählt")
+                    }
+                    Button("Standort manuell auswählen") {
+                        showLocationPicker = true
+                    }
                 } else {
-                    Text("Lat: \(gasEntry.latitude), Lon: \(gasEntry.longitude)")
+                    Text("Standort wird nicht gespeichert")
                 }
             }
             Section(header: Text("Beleg (Bild/PDF)")) {
@@ -74,6 +106,8 @@ struct EditGasEntryView: View {
                         .frame(height: 150)
                 }
                 Button("Beleg ändern") {
+                    receiptImage = nil
+                    pdfData = nil
                     showingReceiptOptions = true
                 }
                 .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
@@ -83,7 +117,6 @@ struct EditGasEntryView: View {
                     Button("Abbrechen", role: .cancel) { }
                 }
             }
-            // Neue Belegvorschau
             if receiptImage != nil || pdfData != nil {
                 Section(header: Text("Belegvorschau")) {
                     Button(action: { showReceiptDetail = true }) {
@@ -113,13 +146,13 @@ struct EditGasEntryView: View {
             }
         }
         .navigationTitle("Gasbeleg bearbeiten")
+        .sheet(isPresented: $showLocationPicker) {
+            NavigationView {
+                LocationPickerView(selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
+            }
+        }
         .sheet(item: $receiptSource) { source in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
-        .sheet(isPresented: $showReceiptDetail) {
-            NavigationView {
-                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
-            }
         }
     }
     
@@ -129,14 +162,22 @@ struct EditGasEntryView: View {
         gasEntry.date = date
         gasEntry.costPerBottle = cost
         gasEntry.bottleCount = count
-        // Hier könnte man – falls benötigt – auch die Adresse neu ermitteln.
-        // Wir verwenden hier den bereits gespeicherten Wert.
         if let pdfData = pdfData {
             gasEntry.receiptData = pdfData
             gasEntry.receiptType = "pdf"
         } else if let image = receiptImage {
             gasEntry.receiptData = image.jpegData(compressionQuality: 0.8)
             gasEntry.receiptType = "image"
+        }
+        if saveLocation {
+            if let loc = manualLocation {
+                gasEntry.latitude = loc.latitude
+                gasEntry.longitude = loc.longitude
+            }
+        } else {
+            gasEntry.latitude = 0
+            gasEntry.longitude = 0
+            gasEntry.address = ""
         }
         do {
             try viewContext.save()
@@ -172,6 +213,8 @@ struct EditGasEntryView_Previews: PreviewProvider {
         entry.address = "Beispielstraße 5, 54321 Beispielstadt"
         entry.receiptType = "image"
         entry.receiptData = UIImage(systemName: "gas")?.jpegData(compressionQuality: 0.8)
+        entry.latitude = 50.0
+        entry.longitude = 8.0
         return NavigationView {
             EditGasEntryView(gasEntry: entry)
         }
