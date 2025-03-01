@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import UniformTypeIdentifiers
 
 struct ImportExportView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -41,7 +42,7 @@ struct ImportExportView: View {
         }
         .navigationTitle("CSV Import/Export")
         .sheet(isPresented: $showingDocumentPicker) {
-            DocumentPicker { url in
+            CSVDocumentPickerView { url in
                 if let url = url {
                     do {
                         let count = try CSVHelper.importCSV(for: selectedImportType, from: url, in: viewContext)
@@ -74,6 +75,41 @@ struct ImportExportView: View {
         let csv = CSVHelper.generateCSV(forTypes: types, in: viewContext)
         exportCSVString = csv
         showingActivityView = true
+    }
+}
+
+/// Spezieller DocumentPicker speziell für CSV-Dateien
+struct CSVDocumentPickerView: UIViewControllerRepresentable {
+    var completion: (URL?) -> Void
+    
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let supportedTypes = [UTType.commaSeparatedText, UTType.tabSeparatedText, UTType.text, UTType.plainText]
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes, asCopy: true)
+        picker.delegate = context.coordinator
+        picker.allowsMultipleSelection = false
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(completion: completion)
+    }
+    
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        var completion: (URL?) -> Void
+        
+        init(completion: @escaping (URL?) -> Void) {
+            self.completion = completion
+        }
+        
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            completion(urls.first)
+        }
+        
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            completion(nil)
+        }
     }
 }
 

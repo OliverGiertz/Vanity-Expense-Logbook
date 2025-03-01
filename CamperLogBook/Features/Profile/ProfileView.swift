@@ -24,6 +24,11 @@ struct ProfileView: View {
     // Für die Eingabe einer neuen Kategorie
     @State private var newCategoryName: String = ""
     
+    // State für Premium-Feature
+    @ObservedObject private var premiumManager = PremiumFeatureManager.shared
+    @State private var showPremiumBackupView = false
+    @State private var showBackupFeatureView = false
+
     var body: some View {
         NavigationView {
             Form {
@@ -66,6 +71,33 @@ struct ProfileView: View {
                     }
                 }
                 
+                Section(header: Text("Datensicherung")) {
+                    if premiumManager.isBackupFeatureUnlocked {
+                        NavigationLink(destination: BackupRestoreView()) {
+                            HStack {
+                                Image(systemName: "externaldrive")
+                                    .foregroundColor(.blue)
+                                Text("Backup & Wiederherstellung")
+                            }
+                        }
+                    } else {
+                        Button(action: { showBackupFeatureView = true }) {
+                            HStack {
+                                Image(systemName: "lock.fill")
+                                    .foregroundColor(.blue)
+                                Text("Backup & Wiederherstellung")
+                                Spacer()
+                                Text("PREMIUM")
+                                    .font(.caption)
+                                    .padding(4)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(4)
+                            }
+                        }
+                    }
+                }
+                
                 Section(header: Text("Startseiten-Einstellungen")) {
                     Toggle("Startseite beim App-Start anzeigen", isOn: $showStartInfo)
                 }
@@ -75,10 +107,31 @@ struct ProfileView: View {
                         Text("CSV Import/Export")
                     }
                 }
+                
+                // Nur in DEBUG-Umgebung anzeigen
+                #if DEBUG
+                Section(header: Text("Debug-Optionen")) {
+                    Button("Premium-Status zurücksetzen") {
+                        premiumManager.resetPurchases()
+                    }
+                    .foregroundColor(.red)
+                }
+                #endif
             }
             .navigationTitle("Profil")
             .onAppear {
                 loadProfile()
+            }
+            .sheet(isPresented: $showBackupFeatureView) {
+                NavigationView {
+                    PremiumFeatureView(
+                        featureID: premiumManager.backupFeatureID,
+                        featureName: "Backup & Wiederherstellung",
+                        featureDescription: "Sichere deine Daten und Belege und stelle sie bei Bedarf wieder her",
+                        featureIcon: "externaldrive.fill",
+                        price: "4,99 €"
+                    )
+                }
             }
         }
     }
