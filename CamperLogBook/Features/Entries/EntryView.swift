@@ -7,50 +7,75 @@ enum EntryType: String, CaseIterable, Identifiable {
     case sonstiges = "Sonstiges"
     
     var id: String { self.rawValue }
+    
+    var icon: String {
+        switch self {
+        case .tanken:
+            return "fuelpump"
+        case .gas:
+            return "flame"
+        case .service:
+            return "wrench.and.screwdriver"
+        case .sonstiges:
+            return "ellipsis.circle"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .tanken:
+            return "Kraftstoff hinzufügen"
+        case .gas:
+            return "Gas-Befüllung erfassen"
+        case .service:
+            return "Ver- oder Entsorgung"
+        case .sonstiges:
+            return "Andere Kosten"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .tanken:
+            return .blue
+        case .gas:
+            return .orange
+        case .service:
+            return .green
+        case .sonstiges:
+            return .purple
+        }
+    }
 }
 
 struct EntryView: View {
-    // Standardmäßig wird "Tanken" ausgewählt, also FuelEntryForm.
-    @State private var selectedEntry: EntryType = .tanken
-    @State private var navigate: Bool = false
-    
     var body: some View {
         NavigationView {
-            // Als Standardanzeige bleibt das FuelEntryForm
-            FuelEntryForm()
-                .navigationTitle("Kosten Eintrag")
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Menu {
-                            Button("Tanken") {
-                                selectedEntry = .tanken
-                                navigate = true
+            ScrollView {
+                VStack(spacing: 20) {
+                    Text("Neuen Eintrag erstellen")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .padding(.top)
+                    
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 16) {
+                        ForEach(EntryType.allCases) { entryType in
+                            NavigationLink(destination: destinationView(for: entryType)) {
+                                EntryTypeCard(entryType: entryType)
                             }
-                            Button("Gas") {
-                                selectedEntry = .gas
-                                navigate = true
-                            }
-                            Button("Ver-/Entsorgung") {
-                                selectedEntry = .service
-                                navigate = true
-                            }
-                            Button("Sonstiges") {
-                                selectedEntry = .sonstiges
-                                navigate = true
-                            }
-                        } label: {
-                            Image(systemName: "plus")
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
+                    .padding(.horizontal)
+                    
+                    Spacer()
                 }
-                // Der versteckte NavigationLink löst die Navigation aus, wenn "navigate" true wird.
-                .background(
-                    NavigationLink(
-                        destination: destinationView(for: selectedEntry),
-                        isActive: $navigate,
-                        label: { EmptyView() }
-                    )
-                )
+            }
+            .navigationTitle("Eintrag")
+            .navigationBarTitleDisplayMode(.large)
         }
     }
     
@@ -66,6 +91,39 @@ struct EntryView: View {
         case .sonstiges:
             OtherEntryForm()
         }
+    }
+}
+
+struct EntryTypeCard: View {
+    let entryType: EntryType
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: entryType.icon)
+                .font(.system(size: 32))
+                .foregroundColor(entryType.color)
+            
+            Text(entryType.rawValue)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+            
+            Text(entryType.description)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 120)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(entryType.color.opacity(0.3), lineWidth: 1)
+                )
+        )
     }
 }
 

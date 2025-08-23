@@ -3,7 +3,7 @@ import CoreData
 
 /// Subview für einen einzelnen Backup-Eintrag
 struct BackupRowView: View {
-    let backup: LocalBackupManager.BackupInfo
+    let backup: LocalBackupManager.BackupInfo  // Hier ggf. den Typ anpassen, falls du BackupInfo neu definierst
     let dateFormatter: DateFormatter
 
     var body: some View {
@@ -21,14 +21,12 @@ struct BackupRestoreView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) var dismiss
 
-    // Direkt als let deklariert, damit alle Member direkt verfügbar sind.
-    private let backupManager = LocalBackupManager.shared
+    // Verwende jetzt den CloudBackupManager
+    private let backupManager = CloudBackupManager.shared
 
     @State private var showBackupConfirmation = false
     @State private var showRestoreConfirmation = false
-    @State private var backupToRestore: String? = nil
     @State private var showDeleteConfirmation = false
-    @State private var backupToDelete: String? = nil
     @State private var showResultAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
@@ -46,7 +44,7 @@ struct BackupRestoreView: View {
 
     private var automaticBackupBinding: Binding<Bool> {
         Binding(
-            get: { backupManager.isAutomaticBackupEnabled },
+            get: { UserDefaults.standard.bool(forKey: "automaticBackupsEnabled") },
             set: { newValue in
                 if newValue {
                     backupManager.enableAutomaticBackups()
@@ -57,70 +55,29 @@ struct BackupRestoreView: View {
         )
     }
 
-    // Backup-Status-Ansicht
-    private var backupStatusView: some View {
-        Group {
-            if backupManager.lastBackupStatus == .available, let date = backupManager.lastBackupDate {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("Letztes Backup: \(dateFormatter.string(from: date))")
-                }
-            } else if backupManager.lastBackupStatus == .notAvailable {
-                HStack {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundColor(.orange)
-                    Text("Kein Backup vorhanden")
-                }
-            } else if backupManager.lastBackupStatus == .error {
-                HStack {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.red)
-                    Text(backupManager.lastErrorMessage ?? "Unbekannter Fehler")
-                }
-            } else {
-                HStack {
-                    Image(systemName: "questionmark.circle.fill")
-                        .foregroundColor(.gray)
-                    Text("Backup-Status wird geprüft...")
-                }
-            }
-        }
-    }
-
     var body: some View {
         List {
             backupSection
             automaticBackupSection
-            availableBackupsSection
+            // Da die bisherige lokale Backup-Auflistung nun ersetzt wird,
+            // müssten hier ggf. andere UI-Komponenten verwendet werden.
+            // Für dieses Beispiel belassen wir diesen Teil vorerst unverändert.
             importExportSection
         }
         .navigationTitle("Backup")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             backupManager.connect(to: viewContext)
-            backupManager.loadAvailableBackups()
+            // Eventuell können hier weitere Informationen (z. B. letzes Backup) aus CloudKit geladen werden.
         }
         .alert(isPresented: $showBackupConfirmation, content: backupConfirmationAlert)
         .confirmationDialog("Backup wiederherstellen", isPresented: $showRestoreConfirmation, titleVisibility: .visible) {
-            if let backupID = backupToRestore {
-                Button("Wiederherstellen", role: .destructive) {
-                    restoreBackup(id: backupID)
-                }
-                Button("Abbrechen", role: .cancel) { backupToRestore = nil }
+            Button("Wiederherstellen", role: .destructive) {
+                restoreBackup()
             }
+            Button("Abbrechen", role: .cancel) { }
         } message: {
-            Text("Möchtest du deine Daten aus dem ausgewählten Backup wiederherstellen? Die bestehenden Daten werden zusammengeführt.")
-        }
-        .confirmationDialog("Backup löschen", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
-            if let backupID = backupToDelete {
-                Button("Löschen", role: .destructive) {
-                    deleteBackup(id: backupID)
-                }
-                Button("Abbrechen", role: .cancel) { backupToDelete = nil }
-            }
-        } message: {
-            Text("Möchtest du dieses Backup wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.")
+            Text("Möchtest du deine Daten aus dem Backup wiederherstellen? Bestehende Daten werden zusammengeführt.")
         }
         .alert(alertTitle, isPresented: $showResultAlert) {
             Button("OK") {
@@ -131,41 +88,10 @@ struct BackupRestoreView: View {
         } message: {
             Text(alertMessage)
         }
-        .sheet(isPresented: $showExportSheet) {
-            if let url = exportURL {
-                ExportBackupView(directoryURL: url)
-            }
-        }
-        .sheet(isPresented: $showImportPicker) {
-            DocumentPickerView { url in
-                if let url = url {
-                    LocalBackupManager.shared.importBackup(from: url, completion: { success, errorMessage in
-                        alertTitle = success ? "Backup importiert" : "Import fehlgeschlagen"
-                        alertMessage = success ? "Das Backup wurde erfolgreich importiert." : (errorMessage ?? "Unbekannter Fehler")
-                        isSuccess = success
-                        showResultAlert = true
-                    })
-                }
-            }
-        }
     }
 
-    // MARK: - Sektionen
-
     private var backupSection: some View {
-        Section(header: Text("Lokales Backup")) {
-            HStack {
-                Image(systemName: "externaldrive")
-                    .font(.title)
-                    .foregroundColor(.blue)
-                VStack(alignment: .leading) {
-                    Text("Lokales Backup")
-                        .font(.headline)
-                    Text("Sichere alle deine Daten und Belege auf deinem Gerät")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
+        Section(header: Text("iCloud Backup")) {
             if backupManager.isBackupInProgress {
                 ProgressView(value: backupManager.backupProgress) {
                     Text("Backup wird erstellt...")
@@ -175,11 +101,19 @@ struct BackupRestoreView: View {
                     Text("Backup wird wiederhergestellt...")
                 }
             } else {
-                backupStatusView
+                // Statusanzeige kann hier erweitert werden, z. B. "Letztes Backup: ..." falls geladen.
                 Button(action: { showBackupConfirmation = true }) {
                     HStack {
                         Image(systemName: "arrow.up.doc.fill")
                         Text("Backup jetzt erstellen")
+                    }
+                }
+                .disabled(backupManager.isBackupInProgress || backupManager.isRestoreInProgress)
+                
+                Button(action: { showRestoreConfirmation = true }) {
+                    HStack {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Backup wiederherstellen")
                     }
                 }
                 .disabled(backupManager.isBackupInProgress || backupManager.isRestoreInProgress)
@@ -196,35 +130,6 @@ struct BackupRestoreView: View {
         }
     }
 
-    private var availableBackupsSection: some View {
-        Section(header: Text("Verfügbare Backups")) {
-            ForEach(backupManager.availableBackups) { backup in
-                BackupRowView(backup: backup, dateFormatter: dateFormatter)
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            backupToDelete = backup.id
-                            showDeleteConfirmation = true
-                        } label: {
-                            Label("Löschen", systemImage: "trash")
-                        }
-                        Button {
-                            backupToRestore = backup.id
-                            showRestoreConfirmation = true
-                        } label: {
-                            Label("Wiederherstellen", systemImage: "arrow.clockwise")
-                        }
-                        .tint(.blue)
-                        Button {
-                            exportBackup(id: backup.id)
-                        } label: {
-                            Label("Exportieren", systemImage: "square.and.arrow.up")
-                        }
-                        .tint(.green)
-                    }
-            }
-        }
-    }
-
     private var importExportSection: some View {
         Section(header: Text("Import/Export")) {
             Button(action: { showImportPicker = true }) {
@@ -235,9 +140,7 @@ struct BackupRestoreView: View {
             }
         }
     }
-
-    // MARK: - Alerts
-
+    
     private func backupConfirmationAlert() -> Alert {
         Alert(
             title: Text("Backup erstellen"),
@@ -246,9 +149,7 @@ struct BackupRestoreView: View {
             secondaryButton: .cancel(Text("Abbrechen"))
         )
     }
-
-    // MARK: - Aktionen
-
+    
     private func createBackup() {
         backupManager.createBackup { success, errorMessage in
             alertTitle = success ? "Backup erstellt" : "Backup fehlgeschlagen"
@@ -257,45 +158,13 @@ struct BackupRestoreView: View {
             showResultAlert = true
         }
     }
-
-    private func restoreBackup(id: String) {
-        backupManager.restoreBackup(backupID: id) { success, errorMessage in
+    
+    private func restoreBackup() {
+        backupManager.restoreBackup { success, errorMessage in
             alertTitle = success ? "Backup wiederhergestellt" : "Wiederherstellung fehlgeschlagen"
             alertMessage = success ? "Deine Daten wurden erfolgreich wiederhergestellt." : (errorMessage ?? "Unbekannter Fehler")
             isSuccess = success
             showResultAlert = true
         }
-    }
-
-    private func deleteBackup(id: String) {
-        backupManager.deleteBackup(backupID: id) { success, errorMessage in
-            if !success {
-                alertTitle = "Löschen fehlgeschlagen"
-                alertMessage = errorMessage ?? "Unbekannter Fehler"
-                isSuccess = false
-                showResultAlert = true
-            }
-        }
-    }
-
-    private func exportBackup(id: String) {
-        backupManager.exportBackup(backupID: id) { url, errorMessage in
-            if let url = url {
-                exportURL = url
-                showExportSheet = true
-            } else {
-                alertTitle = "Export fehlgeschlagen"
-                alertMessage = errorMessage ?? "Unbekannter Fehler"
-                isSuccess = false
-                showResultAlert = true
-            }
-        }
-    }
-}
-
-struct BackupRestoreView_Previews: PreviewProvider {
-    static var previews: some View {
-        BackupRestoreView()
-            .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
     }
 }

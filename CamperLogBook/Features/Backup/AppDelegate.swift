@@ -5,7 +5,6 @@ import CoreData
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        
         // Registriere für Benachrichtigungen
         UNUserNotificationCenter.current().delegate = self
         
@@ -17,8 +16,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         // Prüfen, ob automatisches Backup aktiviert ist
-        if UserDefaults.standard.bool(forKey: "automaticBackupsEnabled") &&
-           PremiumFeatureManager.shared.isBackupFeatureUnlocked {
+        if UserDefaults.standard.bool(forKey: "automaticBackupsEnabled") {
             performAutomaticBackup { success in
                 completionHandler(success ? .newData : .failed)
             }
@@ -39,7 +37,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         // Wenn die Benachrichtigung ein automatisches Backup auslösen soll
         if let actionType = userInfo["actionType"] as? String, actionType == "autoBackup" {
-            // Backup starten
             performAutomaticBackup { _ in
                 completionHandler()
             }
@@ -49,18 +46,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
     
     private func performAutomaticBackup(completion: @escaping (Bool) -> Void) {
-        guard PremiumFeatureManager.shared.isBackupFeatureUnlocked else {
-            completion(false)
-            return
-        }
-        
-        // Kontext aus dem Persistence Controller holen
         let context = PersistenceController.shared.container.viewContext
-        
-        // Backup-Manager initialisieren und Backup starten
-        let backupManager = LocalBackupManager.shared
+        let backupManager = CloudBackupManager.shared
         backupManager.connect(to: context)
-        
         backupManager.createBackup { success, errorMessage in
             if success {
                 print("Automatisches Backup erfolgreich erstellt")

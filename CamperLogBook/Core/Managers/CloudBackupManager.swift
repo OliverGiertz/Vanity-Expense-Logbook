@@ -1,22 +1,20 @@
 import Foundation
-import CoreData
 import CloudKit
+import CoreData
 import UIKit
-import SwiftUI
 
-/// Hauptklasse zur Verwaltung von iCloud-Backups
+/// Verwalter für iCloud-Backups der App.
+/// Sichert CoreData-Store, Belege und Versionsinformationen als ZIP‑Archiv in iCloud.
 class CloudBackupManager: ObservableObject {
     static let shared = CloudBackupManager()
     
-    // CloudKit constants
-    private lazy var container: CKContainer = {
-        return CKContainer.default()
-    }()
-    private var privateDatabase: CKDatabase { container.privateCloudDatabase }
-    private let recordType = "ExpenseBackup"
-    private let backupMetadataID = "backupMetadata"
+    // CloudKit – Standardcontainer und private Datenbank
+    private let container: CKContainer
+    private let privateDatabase: CKDatabase
+    private let recordType = "AppBackup"
+    private let backupRecordID = CKRecord.ID(recordName: "currentBackup")
     
-    // Backup status
+    // Backup Status
     @Published var isBackupInProgress = false
     @Published var isRestoreInProgress = false
     @Published var backupProgress: Double = 0.0
@@ -25,552 +23,296 @@ class CloudBackupManager: ObservableObject {
     @Published var lastBackupStatus: BackupStatus = .none
     @Published var lastErrorMessage: String?
     
-    // App version und Dateninformationen
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-    }
-    
+    // Verwenden die bestehenden Export/Import-Coordinatoren
     private var coreDataCoordinator: CoreDataBackupCoordinator?
     private var receiptCoordinator: ReceiptBackupCoordinator?
     
-    // Flag um zu prüfen, ob CloudKit initialisiert und verfügbar ist
-    private var isCloudKitAvailable = false
+    // Backup Status Enum
+    enum BackupStatus {
+        case none, notAvailable, available, inProgress, error
+    }
     
     private init() {
-        // Verzögerte Initialisierung von CloudKit im Debug-Modus
-        #if DEBUG
-        // Im Debug-Modus verzögern wir die CloudKit-Initialisierung,
-        // um die Fehlermeldung zu vermeiden
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.initializeCloudKit()
-        }
-        #else
-        initializeCloudKit()
-        #endif
+        // Standard iCloud-Container
+        container = CKContainer.default()
+        privateDatabase = container.privateCloudDatabase
+        // Prüfe den iCloud-Accountstatus
+        checkiCloudAccountStatus()
     }
     
-    private func initializeCloudKit() {
-        // Prüfe, ob CloudKit verfügbar ist
-        container.accountStatus { [weak self] (status, error) in
-            guard let self = self else { return }
-            
-            DispatchQueue.main.async {
-                self.isCloudKitAvailable = (status == .available && error == nil)
-                
-                if self.isCloudKitAvailable {
-                    self.checkBackupMetadata()
-                } else {
-                    self.lastBackupStatus = .notAvailable
-                    if let error = error {
-                        self.lastErrorMessage = "iCloud nicht verfügbar: \(error.localizedDescription)"
-                    } else {
-                        self.lastErrorMessage = "iCloud nicht verfügbar. Bitte in den Einstellungen aktivieren."
-                    }
-                }
-            }
-        }
-    }
-    
-    /// Stellt eine Verbindung zu CoreData her, um Backup-Operationen durchzuführen
+    /// Verbindet die Backup-Komponenten mit dem CoreData-Kontext
     func connect(to context: NSManagedObjectContext) {
         self.coreDataCoordinator = CoreDataBackupCoordinator(context: context)
         self.receiptCoordinator = ReceiptBackupCoordinator(context: context)
     }
     
-    /// Überprüft, ob der Benutzer iCloud aktiviert hat
-    func checkiCloudAvailability(completion: @escaping (Bool) -> Void) {
-        // Falls CloudKit noch nicht initialisiert wurde, sofort mit false antworten
-        if !isCloudKitAvailable {
+    /// Prüft den iCloud-Accountstatus und lädt vorhandenes Backup, falls vorhanden
+    private func checkiCloudAccountStatus() {
+        container.accountStatus { status, error in
             DispatchQueue.main.async {
-                completion(false)
-            }
-            return
-        }
-        
-        container.accountStatus { [weak self] (status, error) in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self?.lastErrorMessage = "iCloud Fehler: \(error.localizedDescription)"
-                    completion(false)
-                    return
-                }
-                
-                switch status {
-                case .available:
-                    completion(true)
-                default:
-                    self?.lastErrorMessage = "iCloud nicht verfügbar. Bitte in den Einstellungen aktivieren."
-                    completion(false)
-                }
-            }
-        }
-    }
-    
-    /// Prüft, ob ein Backup in der Cloud existiert und lädt Metadaten
-    func checkBackupMetadata() {
-        // Falls CloudKit noch nicht initialisiert wurde, abbrechen
-        if !isCloudKitAvailable { return }
-        
-        checkiCloudAvailability { [weak self] available in
-            guard let self = self, available else { return }
-            
-            let predicate = NSPredicate(format: "recordID.recordName == %@", self.backupMetadataID)
-            let query = CKQuery(recordType: self.recordType, predicate: predicate)
-            
-            self.privateDatabase.perform(query, inZoneWith: nil) { [weak self] records, error in
-                guard let self = self else { return }
-                
-                DispatchQueue.main.async {
-                    if let error = error {
-                        self.lastErrorMessage = "Fehler beim Laden der Backup-Metadaten: \(error.localizedDescription)"
-                        self.lastBackupStatus = .error
-                        return
-                    }
-                    
-                    if let record = records?.first {
-                        if let timestamp = record["lastBackupDate"] as? Date {
-                            self.lastBackupDate = timestamp
-                            self.lastBackupStatus = .available
-                        }
-                    } else {
-                        self.lastBackupStatus = .notAvailable
+                if status == .available {
+                    self.loadAvailableBackup()
+                } else {
+                    self.lastBackupStatus = .notAvailable
+                    switch status {
+                    case .noAccount:
+                        self.lastErrorMessage = "Kein iCloud-Account angemeldet. Bitte in den Einstellungen bei iCloud anmelden."
+                    case .restricted:
+                        self.lastErrorMessage = "iCloud ist eingeschränkt. Bitte überprüfe die iCloud-Einstellungen."
+                    case .couldNotDetermine:
+                        self.lastErrorMessage = "Der iCloud-Status konnte nicht ermittelt werden."
+                    default:
+                        self.lastErrorMessage = error?.localizedDescription ?? "iCloud ist nicht verfügbar."
                     }
                 }
             }
         }
     }
     
-    /// Erstellt ein Backup aller App-Daten in iCloud
+    /// Erstellt ein Backup der App-Daten und lädt es in iCloud hoch.
     func createBackup(completion: @escaping (Bool, String?) -> Void) {
-        // Falls CloudKit noch nicht initialisiert wurde, mit Fehler abbrechen
-        if !isCloudKitAvailable {
-            completion(false, "iCloud nicht verfügbar")
-            return
-        }
-        
         guard let coreDataCoordinator = coreDataCoordinator,
               let receiptCoordinator = receiptCoordinator else {
-            completion(false, "Backup-System nicht initialisiert")
+            completion(false, "Backup system not initialized")
             return
         }
         
-        checkiCloudAvailability { [weak self] available in
-            guard let self = self, available else {
-                completion(false, "iCloud nicht verfügbar")
-                return
-            }
-            
-            DispatchQueue.main.async {
-                self.isBackupInProgress = true
-                self.backupProgress = 0.0
-                self.lastErrorMessage = nil
-            }
-            
-            // 1. Erstelle temporäre Dateien für das Backup
-            let tempBackupURL = self.createTempDirectory()
-            let coreDataURL = tempBackupURL.appendingPathComponent("coredata_backup.sqlite")
-            let receiptsURL = tempBackupURL.appendingPathComponent("receipts")
-            
-            do {
-                try FileManager.default.createDirectory(at: receiptsURL, withIntermediateDirectories: true)
-                
-                // 2. Backup CoreData
-                coreDataCoordinator.exportStore(to: coreDataURL) { [weak self] success, error in
-                    if !success {
-                        DispatchQueue.main.async {
-                            self?.isBackupInProgress = false
-                            self?.lastErrorMessage = "CoreData Backup fehlgeschlagen: \(error ?? "Unbekannter Fehler")"
-                            self?.lastBackupStatus = .error
-                            completion(false, self?.lastErrorMessage)
-                        }
-                        return
-                    }
-                    
-                    DispatchQueue.main.async {
-                        self?.backupProgress = 0.3
-                    }
-                    
-                    // 3. Backup Belege (PDF/Bilder)
-                    receiptCoordinator.exportReceipts(to: receiptsURL) { [weak self] success, receiptCount, error in
-                        if !success {
-                            DispatchQueue.main.async {
-                                self?.isBackupInProgress = false
-                                self?.lastErrorMessage = "Beleg-Backup fehlgeschlagen: \(error ?? "Unbekannter Fehler")"
-                                self?.lastBackupStatus = .error
-                                completion(false, self?.lastErrorMessage)
-                            }
-                            return
-                        }
-                        
-                        DispatchQueue.main.async {
-                            self?.backupProgress = 0.6
-                        }
-                        
-                        // 4. Erstelle ZIP-Archiv (vereinfacht durch Kopie der Dateien)
-                        let backupPackage = tempBackupURL.appendingPathComponent("backup_package")
-                        
-                        do {
-                            try FileManager.default.createDirectory(at: backupPackage, withIntermediateDirectories: true)
-                            
-                            // Kopiere Version-Info-Datei
-                            let versionInfoPath = tempBackupURL.appendingPathComponent("version.plist")
-                            let versionInfoDestPath = backupPackage.appendingPathComponent("version.plist")
-                            try FileManager.default.copyItem(at: versionInfoPath, to: versionInfoDestPath)
-                            
-                            // Kopiere CoreData-Backup
-                            let coreDataDestPath = backupPackage.appendingPathComponent("coredata_backup.sqlite")
-                            try FileManager.default.copyItem(at: coreDataURL, to: coreDataDestPath)
-                            
-                            // Kopiere Belege in einen Unterordner
-                            let receiptsDestPath = backupPackage.appendingPathComponent("receipts")
-                            try FileManager.default.createDirectory(at: receiptsDestPath, withIntermediateDirectories: true)
-                            
-                            let receiptFiles = try FileManager.default.contentsOfDirectory(at: receiptsURL, includingPropertiesForKeys: nil)
-                            for fileURL in receiptFiles {
-                                let fileName = fileURL.lastPathComponent
-                                let destURL = receiptsDestPath.appendingPathComponent(fileName)
-                                try FileManager.default.copyItem(at: fileURL, to: destURL)
-                            }
-                            
-                            DispatchQueue.main.async {
-                                self?.backupProgress = 0.7
-                            }
-                            
-                            // 5. Upload zur iCloud
-                            self?.uploadBackupToCloud(backupPackage: backupPackage, receiptCount: receiptCount) { success, error in
-                                DispatchQueue.main.async {
-                                    self?.isBackupInProgress = false
-                                    if success {
-                                        self?.lastBackupDate = Date()
-                                        self?.lastBackupStatus = .available
-                                        self?.backupProgress = 1.0
-                                        completion(true, nil)
-                                    } else {
-                                        self?.lastErrorMessage = "Upload fehlgeschlagen: \(error ?? "Unbekannter Fehler")"
-                                        self?.lastBackupStatus = .error
-                                        completion(false, self?.lastErrorMessage)
-                                    }
-                                    
-                                    // Lösche temporäre Dateien
-                                    try? FileManager.default.removeItem(at: tempBackupURL)
-                                }
-                            }
-                        } catch {
-                            DispatchQueue.main.async {
-                                self?.isBackupInProgress = false
-                                self?.lastErrorMessage = "Backup-Paket-Erstellung fehlgeschlagen: \(error.localizedDescription)"
-                                self?.lastBackupStatus = .error
-                                completion(false, self?.lastErrorMessage)
-                                try? FileManager.default.removeItem(at: tempBackupURL)
-                            }
-                        }
-                    }
-                }
-            } catch {
+        isBackupInProgress = true
+        backupProgress = 0.0
+        lastErrorMessage = nil
+        
+        // Erstelle ein temporäres Verzeichnis
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        do {
+            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        } catch {
+            isBackupInProgress = false
+            completion(false, "Failed to create temporary directory: \(error.localizedDescription)")
+            return
+        }
+        
+        // Pfade für CoreData und Belege
+        let coreDataURL = tempDir.appendingPathComponent("coredata_backup.sqlite")
+        let receiptsURL = tempDir.appendingPathComponent("receipts")
+        try? FileManager.default.createDirectory(at: receiptsURL, withIntermediateDirectories: true)
+        
+        // Schritt 1: Exportiere CoreData
+        coreDataCoordinator.exportStore(to: coreDataURL) { [weak self] success, errorString in
+            guard let self = self else { return }
+            if !success {
                 DispatchQueue.main.async {
                     self.isBackupInProgress = false
-                    self.lastErrorMessage = "Backup-Vorbereitung fehlgeschlagen: \(error.localizedDescription)"
-                    self.lastBackupStatus = .error
-                    completion(false, self.lastErrorMessage)
+                    completion(false, "CoreData export failed: \(errorString ?? "unknown error")")
                 }
-            }
-        }
-    }
-    
-    /// Stellt ein Backup wieder her
-    func restoreBackup(completion: @escaping (Bool, String?) -> Void) {
-        // Falls CloudKit noch nicht initialisiert wurde, mit Fehler abbrechen
-        if !isCloudKitAvailable {
-            completion(false, "iCloud nicht verfügbar")
-            return
-        }
-        
-        guard let coreDataCoordinator = coreDataCoordinator,
-              let receiptCoordinator = receiptCoordinator else {
-            completion(false, "Backup-System nicht initialisiert")
-            return
-        }
-        
-        checkiCloudAvailability { [weak self] available in
-            guard let self = self, available else {
-                completion(false, "iCloud nicht verfügbar")
                 return
             }
+            DispatchQueue.main.async { self.backupProgress = 0.3 }
             
-            DispatchQueue.main.async {
-                self.isRestoreInProgress = true
-                self.restoreProgress = 0.0
-                self.lastErrorMessage = nil
-            }
-            
-            // 1. Lade Backup von iCloud
-            self.downloadBackupFromCloud { [weak self] success, backupFolder, error in
+            // Schritt 2: Exportiere Belege
+            receiptCoordinator.exportReceipts(to: receiptsURL) { [weak self] success, receiptCount, errorString in
+                guard let self = self else { return }
                 if !success {
                     DispatchQueue.main.async {
-                        self?.isRestoreInProgress = false
-                        self?.lastErrorMessage = "Download fehlgeschlagen: \(error ?? "Unbekannter Fehler")"
-                        completion(false, self?.lastErrorMessage)
+                        self.isBackupInProgress = false
+                        completion(false, "Receipts export failed: \(errorString ?? "unknown error")")
                     }
                     return
                 }
+                DispatchQueue.main.async { self.backupProgress = 0.6 }
                 
-                guard let backupFolder = backupFolder else {
-                    DispatchQueue.main.async {
-                        self?.isRestoreInProgress = false
-                        self?.lastErrorMessage = "Keine Backup-Datei gefunden"
-                        completion(false, self?.lastErrorMessage)
-                    }
-                    return
-                }
-                
-                DispatchQueue.main.async {
-                    self?.restoreProgress = 0.3
-                }
-                
-                // 2. Prüfe Version
-                guard let isCompatible = self?.isBackupCompatible(backupFolder), isCompatible else {
-                    DispatchQueue.main.async {
-                        self?.isRestoreInProgress = false
-                        self?.lastErrorMessage = "Backup ist nicht mit dieser App-Version kompatibel"
-                        completion(false, self?.lastErrorMessage)
-                        try? FileManager.default.removeItem(at: backupFolder)
-                    }
-                    return
-                }
-                
-                DispatchQueue.main.async {
-                    self?.restoreProgress = 0.5
-                }
-                
-                // 3. Importiere CoreData
-                let coreDataFile = backupFolder.appendingPathComponent("coredata_backup.sqlite")
-                coreDataCoordinator.importStore(from: coreDataFile) { [weak self] success, coreDataError in
-                    if !success {
-                        DispatchQueue.main.async {
-                            self?.isRestoreInProgress = false
-                            self?.lastErrorMessage = "CoreData-Import fehlgeschlagen: \(coreDataError ?? "Unbekannter Fehler")"
-                            completion(false, self?.lastErrorMessage)
-                            try? FileManager.default.removeItem(at: backupFolder)
-                        }
-                        return
-                    }
-                    
-                    DispatchQueue.main.async {
-                        self?.restoreProgress = 0.7
-                    }
-                    
-                    // 4. Importiere Belege
-                    let receiptsFolder = backupFolder.appendingPathComponent("receipts")
-                    receiptCoordinator.importReceipts(from: receiptsFolder) { success, receiptError in
-                        DispatchQueue.main.async {
-                            self?.isRestoreInProgress = false
-                            if success {
-                                self?.restoreProgress = 1.0
-                                completion(true, nil)
-                            } else {
-                                self?.lastErrorMessage = "Beleg-Import fehlgeschlagen: \(receiptError ?? "Unbekannter Fehler")"
-                                completion(false, self?.lastErrorMessage)
-                            }
-                            // Lösche temporäre Dateien
-                            try? FileManager.default.removeItem(at: backupFolder)
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // MARK: - Helper-Methoden
-    
-    /// Lädt das Backup von iCloud herunter
-    private func downloadBackupFromCloud(completion: @escaping (Bool, URL?, String?) -> Void) {
-        let predicate = NSPredicate(format: "recordType == %@", "backupData")
-        let query = CKQuery(recordType: recordType, predicate: predicate)
-        
-        privateDatabase.perform(query, inZoneWith: nil) { [weak self] records, error in
-            if let error = error {
-                DispatchQueue.main.async {
-                    completion(false, nil, "Fehler beim Laden des Backups: \(error.localizedDescription)")
-                }
-                return
-            }
-            
-            guard let record = records?.first else {
-                DispatchQueue.main.async {
-                    completion(false, nil, "Kein Backup gefunden")
-                }
-                return
-            }
-            
-            if let asset = record["backupFolder"] as? CKAsset, let fileURL = asset.fileURL {
-                let tempDir = self?.createTempDirectory()
-                let extractionDir = tempDir?.appendingPathComponent("extracted_backup")
-                
+                // Schritt 3: Schreibe Versionsinformationen
+                let versionInfoPath = tempDir.appendingPathComponent("version.plist")
+                let versionInfo: [String: Any] = [
+                    "appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0",
+                    "backupDate": Date(),
+                    "receiptCount": receiptCount
+                ]
                 do {
-                    if let extractionDir = extractionDir {
-                        try FileManager.default.createDirectory(at: extractionDir, withIntermediateDirectories: true)
-                        
-                        // Kopiere alle Dateien aus dem Asset-Ordner in den Extraktionsordner
-                        let fileManager = FileManager.default
-                        let backupFiles = try fileManager.contentsOfDirectory(at: fileURL, includingPropertiesForKeys: nil)
-                        
-                        for file in backupFiles {
-                            let destPath = extractionDir.appendingPathComponent(file.lastPathComponent)
-                            try fileManager.copyItem(at: file, to: destPath)
-                        }
-                        
-                        DispatchQueue.main.async {
-                            completion(true, extractionDir, nil)
-                        }
-                    } else {
-                        DispatchQueue.main.async {
-                            completion(false, nil, "Konnte keinen temporären Ordner erstellen")
-                        }
-                    }
+                    let versionData = try PropertyListSerialization.data(fromPropertyList: versionInfo, format: .xml, options: 0)
+                    try versionData.write(to: versionInfoPath)
                 } catch {
                     DispatchQueue.main.async {
-                        completion(false, nil, "Fehler beim Extrahieren des Backups: \(error.localizedDescription)")
-                    }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    completion(false, nil, "Backup-Datei ist beschädigt")
-                }
-            }
-        }
-    }
-    
-    /// Lädt das Backup in die iCloud hoch
-    private func uploadBackupToCloud(backupPackage: URL, receiptCount: Int, completion: @escaping (Bool, String?) -> Void) {
-        let dataRecord = CKRecord(recordType: recordType, recordID: CKRecord.ID(recordName: "backupData"))
-        
-        // Füge Backup-Datei als Asset hinzu
-        if FileManager.default.fileExists(atPath: backupPackage.path) {
-            dataRecord["backupFolder"] = CKAsset(fileURL: backupPackage)
-            dataRecord["appVersion"] = appVersion
-            dataRecord["receiptCount"] = receiptCount
-            dataRecord["creationDate"] = Date()
-            
-            // Füge Metadaten-Record hinzu oder aktualisiere bestehenden
-            let metadataRecord = CKRecord(recordType: recordType, recordID: CKRecord.ID(recordName: backupMetadataID))
-            metadataRecord["lastBackupDate"] = Date()
-            metadataRecord["appVersion"] = appVersion
-            metadataRecord["receiptCount"] = receiptCount
-            
-            // Bereite Multi-Operation vor
-            let saveOperation = CKModifyRecordsOperation(recordsToSave: [dataRecord, metadataRecord], recordIDsToDelete: nil)
-            saveOperation.qualityOfService = .userInitiated
-            
-            // Progress-Updates
-            var currentProgress: Double = 0.7
-            saveOperation.perRecordProgressBlock = { [weak self] _, progress in
-                DispatchQueue.main.async {
-                    // Skaliere Fortschritt von 0.7 bis 1.0
-                    currentProgress = 0.7 + (Double(progress) * 0.3)
-                    self?.backupProgress = min(0.99, currentProgress) // Nicht ganz 1.0 bis zur vollständigen Fertigstellung
-                }
-            }
-            
-            saveOperation.modifyRecordsCompletionBlock = { records, _, error in
-                if let error = error {
-                    DispatchQueue.main.async {
-                        completion(false, "Upload-Fehler: \(error.localizedDescription)")
+                        self.isBackupInProgress = false
+                        completion(false, "Failed to write version info: \(error.localizedDescription)")
                     }
                     return
                 }
                 
-                DispatchQueue.main.async {
-                    completion(true, nil)
+                // Schritt 4: Erstelle ein ZIP-Archiv aus dem temporären Verzeichnis
+                let zipURL = tempDir.deletingLastPathComponent().appendingPathComponent("backup.zip")
+                do {
+                    try FileManager.default.zipItem(at: tempDir, to: zipURL)
+                } catch {
+                    DispatchQueue.main.async {
+                        self.isBackupInProgress = false
+                        completion(false, "Failed to create ZIP archive: \(error.localizedDescription)")
+                    }
+                    return
+                }
+                DispatchQueue.main.async { self.backupProgress = 0.8 }
+                
+                // Schritt 5: Lade das ZIP-Archiv in iCloud hoch
+                self.uploadBackup(zipURL: zipURL) { success, errorString in
+                    try? FileManager.default.removeItem(at: tempDir)
+                    DispatchQueue.main.async {
+                        self.isBackupInProgress = false
+                        if success {
+                            self.backupProgress = 1.0
+                            self.lastBackupDate = Date()
+                            self.lastBackupStatus = .available
+                        } else {
+                            self.lastBackupStatus = .error
+                        }
+                        completion(success, errorString)
+                    }
                 }
             }
+        }
+    }
+    
+    /// Lädt das ZIP-Archiv als CKAsset in iCloud hoch.
+    private func uploadBackup(zipURL: URL, completion: @escaping (Bool, String?) -> Void) {
+        let record = CKRecord(recordType: recordType, recordID: backupRecordID)
+        record["backupDate"] = Date() as CKRecordValue
+        record["appVersion"] = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String as CKRecordValue?
+        record["backupAsset"] = CKAsset(fileURL: zipURL)
+        
+        let modifyOp = CKModifyRecordsOperation(recordsToSave: [record], recordIDsToDelete: nil)
+        modifyOp.modifyRecordsCompletionBlock = { savedRecords, deletedRecordIDs, error in
+            if let error = error {
+                completion(false, "Cloud upload failed: \(error.localizedDescription)")
+            } else {
+                completion(true, nil)
+            }
+        }
+        modifyOp.qualityOfService = .userInitiated
+        privateDatabase.add(modifyOp)
+    }
+    
+    /// Stellt ein Backup aus iCloud wieder her.
+    func restoreBackup(completion: @escaping (Bool, String?) -> Void) {
+        isRestoreInProgress = true
+        restoreProgress = 0.0
+        lastErrorMessage = nil
+        
+        // Hole das Backup-Record aus iCloud
+        privateDatabase.fetch(withRecordID: backupRecordID) { [weak self] record, error in
+            guard let self = self else { return }
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.isRestoreInProgress = false
+                    completion(false, "Failed to fetch backup from iCloud: \(error.localizedDescription)")
+                }
+                return
+            }
+            guard let record = record,
+                  let asset = record["backupAsset"] as? CKAsset,
+                  let fileURL = asset.fileURL else {
+                DispatchQueue.main.async {
+                    self.isRestoreInProgress = false
+                    completion(false, "No backup asset found in iCloud record.")
+                }
+                return
+            }
+            DispatchQueue.main.async { self.restoreProgress = 0.3 }
             
-            privateDatabase.add(saveOperation)
-        } else {
-            DispatchQueue.main.async {
-                completion(false, "Backup-Datei nicht gefunden")
+            // Entpacke das heruntergeladene ZIP in ein temporäres Verzeichnis
+            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            do {
+                try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+                try FileManager.default.unzipItem(at: fileURL, to: tempDir)
+            } catch {
+                DispatchQueue.main.async {
+                    self.isRestoreInProgress = false
+                    completion(false, "Failed to unzip backup: \(error.localizedDescription)")
+                }
+                return
+            }
+            DispatchQueue.main.async { self.restoreProgress = 0.6 }
+            
+            // Stelle CoreData und Belege wieder her
+            let coreDataURL = tempDir.appendingPathComponent("coredata_backup.sqlite")
+            guard FileManager.default.fileExists(atPath: coreDataURL.path) else {
+                DispatchQueue.main.async {
+                    self.isRestoreInProgress = false
+                    completion(false, "CoreData backup file not found in unzipped data.")
+                }
+                return
+            }
+            self.coreDataCoordinator?.importStore(from: coreDataURL) { [weak self] success, errorString in
+                guard let self = self else { return }
+                if !success {
+                    DispatchQueue.main.async {
+                        self.isRestoreInProgress = false
+                        completion(false, "Failed to import CoreData store: \(errorString ?? "unknown error")")
+                    }
+                    return
+                }
+                DispatchQueue.main.async { self.restoreProgress = 0.8 }
+                let receiptsURL = tempDir.appendingPathComponent("receipts")
+                self.receiptCoordinator?.importReceipts(from: receiptsURL) { [weak self] success, errorString in
+                    guard let self = self else { return }
+                    try? FileManager.default.removeItem(at: tempDir)
+                    DispatchQueue.main.async {
+                        self.isRestoreInProgress = false
+                        if success {
+                            self.restoreProgress = 1.0
+                            completion(true, nil)
+                        } else {
+                            completion(false, "Failed to import receipts: \(errorString ?? "unknown error")")
+                        }
+                    }
+                }
             }
         }
     }
     
-    /// Erstellt ein temporäres Verzeichnis für Backup-Operationen
-    private func createTempDirectory() -> URL {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
-    
-    /// Prüft, ob ein Backup mit der aktuellen App-Version kompatibel ist
-    private func isBackupCompatible(_ backupDir: URL) -> Bool {
-        // In diesem Fall betrachten wir nur die Hauptversionsnummer
-        // Format: 1.2.3 -> 1 ist die Hauptversion
-        let versionInfoPath = backupDir.appendingPathComponent("version.plist")
-        
-        // Wenn keine Versionsdatei existiert, nehmen wir an, dass das Backup inkompatibel ist
-        guard FileManager.default.fileExists(atPath: versionInfoPath.path),
-              let versionData = try? Data(contentsOf: versionInfoPath),
-              let versionInfo = try? PropertyListSerialization.propertyList(from: versionData, options: [], format: nil) as? [String: Any],
-              let backupVersion = versionInfo["appVersion"] as? String else {
-            return false
+    /// Lädt das vorhandene Backup aus iCloud (falls vorhanden) und aktualisiert den Status.
+    func loadAvailableBackup() {
+        privateDatabase.fetch(withRecordID: backupRecordID) { [weak self] record, error in
+            DispatchQueue.main.async {
+                if let record = record, let backupDate = record["backupDate"] as? Date {
+                    self?.lastBackupDate = backupDate
+                    self?.lastBackupStatus = .available
+                } else {
+                    self?.lastBackupStatus = .notAvailable
+                }
+            }
         }
-        
-        // Extrahiere Hauptversion aus Backup- und aktueller App-Version
-        let currentMajorVersion = appVersion.split(separator: ".").first ?? ""
-        let backupMajorVersion = backupVersion.split(separator: ".").first ?? ""
-        
-        return currentMajorVersion == backupMajorVersion
     }
     
-    // Aktiviert tägliche automatische Backups
+    // MARK: - Automatische Backup-Funktionen
+    
     func enableAutomaticBackups() {
         UserDefaults.standard.set(true, forKey: "automaticBackupsEnabled")
         scheduleNextAutomaticBackup()
     }
     
-    // Deaktiviert tägliche automatische Backups
     func disableAutomaticBackups() {
         UserDefaults.standard.set(false, forKey: "automaticBackupsEnabled")
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["autoBackupReminder"])
     }
     
-    // Ist automatisches Backup aktiviert?
     var isAutomaticBackupEnabled: Bool {
         UserDefaults.standard.bool(forKey: "automaticBackupsEnabled")
     }
     
-    // Plant das nächste automatische Backup
     private func scheduleNextAutomaticBackup() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if granted {
-                // Lösche vorherige Benachrichtigungen
                 UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["autoBackupReminder"])
-                
-                // Setze einen täglichen Trigger für das Backup (z.B. um 2 Uhr nachts)
                 var components = DateComponents()
                 components.hour = 2
                 components.minute = 0
-                
                 let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-                
                 let content = UNMutableNotificationContent()
                 content.title = "Automatisches Backup"
                 content.body = "Deine Vanity Expense Logbook Daten werden jetzt gesichert"
                 content.sound = UNNotificationSound.default
                 content.userInfo = ["actionType": "autoBackup"]
-                
                 let request = UNNotificationRequest(identifier: "autoBackupReminder", content: content, trigger: trigger)
                 UNUserNotificationCenter.current().add(request)
             }
         }
-    }
-}
-
-// MARK: - Backup Status Enum
-extension CloudBackupManager {
-    enum BackupStatus {
-        case none
-        case notAvailable
-        case available
-        case inProgress
-        case error
     }
 }

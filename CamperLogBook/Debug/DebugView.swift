@@ -13,6 +13,9 @@ struct DebugView: View {
         formatter.maximumFractionDigits = 6
         return formatter
     }
+    
+    // Backup-Test Schalter
+    @State private var backupTestEnabled: Bool = false
 
     @FetchRequest(
         entity: FuelEntry.entity(),
@@ -97,6 +100,22 @@ struct DebugView: View {
                         Text("Core Data Einträge anzeigen")
                     }
                 }
+                
+                Section(header: Text("Cloud Backup Test")) {
+                    Toggle("Backup Test aktivieren", isOn: $backupTestEnabled)
+                    if backupTestEnabled {
+                        Button("Backup erstellen (Cloud)") {
+                            CloudBackupManager.shared.createBackup { success, errorMessage in
+                                print(success ? "Cloud Backup erfolgreich erstellt" : "Cloud Backup fehlgeschlagen: \(errorMessage ?? "Unbekannter Fehler")")
+                            }
+                        }
+                        Button("Backup wiederherstellen (Cloud)") {
+                            CloudBackupManager.shared.restoreBackup { success, errorMessage in
+                                print(success ? "Cloud Backup erfolgreich wiederhergestellt" : "Cloud Backup Wiederherstellung fehlgeschlagen: \(errorMessage ?? "Unbekannter Fehler")")
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle("Debug")
         }
@@ -106,6 +125,7 @@ struct DebugView: View {
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
         let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
         deleteRequest.resultType = .resultTypeObjectIDs
+        
         do {
             let result = try viewContext.execute(deleteRequest) as? NSBatchDeleteResult
             if let objectIDs = result?.result as? [NSManagedObjectID] {
@@ -136,11 +156,5 @@ struct DebugView: View {
                 }
             }
         }
-    }
-}
-
-struct DebugView_Previews: PreviewProvider {
-    static var previews: some View {
-        DebugView()
     }
 }

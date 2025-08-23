@@ -49,8 +49,8 @@ struct CamperLogBookApp: App {
                 .environmentObject(locationManager)
                 .environment(\.isDebugMode, isDebugModeEnabled)
                 .onAppear {
-                    // Verbinde Backup-Manager mit dem CoreData-Kontext
-                    LocalBackupManager.shared.connect(to: persistenceController.container.viewContext)
+                    // Verbinde CloudBackupManager mit dem CoreData-Kontext
+                    CloudBackupManager.shared.connect(to: persistenceController.container.viewContext)
                 }
         }
     }
