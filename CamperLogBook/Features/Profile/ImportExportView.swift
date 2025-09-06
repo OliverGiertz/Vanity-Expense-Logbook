@@ -6,7 +6,6 @@ struct ImportExportView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
     // Import
-    @State private var selectedImportType: CSVHelperEntryType = .fuel
     @State private var showingDocumentPicker = false
     @State private var importResultMessage: String?
     @State private var showingImportAlert = false
@@ -21,13 +20,7 @@ struct ImportExportView: View {
     var body: some View {
         Form {
             Section(header: Text("CSV Import")) {
-                Picker("Eintragstyp", selection: $selectedImportType) {
-                    Text("Tankbeleg").tag(CSVHelperEntryType.fuel)
-                    Text("Gaskosten").tag(CSVHelperEntryType.gas)
-                    Text("Sonstige Kosten").tag(CSVHelperEntryType.other)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                Button("CSV Datei auswählen") {
+                Button("CSV-Datei auswählen und importieren") {
                     showingDocumentPicker = true
                 }
             }
@@ -45,8 +38,12 @@ struct ImportExportView: View {
             CSVDocumentPickerView { url in
                 if let url = url {
                     do {
-                        let count = try CSVHelper.importCSV(for: selectedImportType, from: url, in: viewContext)
-                        importResultMessage = "\(count) Einträge importiert."
+                        let summary = try CSVHelper.importCSVAllTypes(from: url, in: viewContext)
+                        if summary.total > 0 {
+                            importResultMessage = "\(summary.total) Einträge importiert (Tank: \(summary.fuel), Gas: \(summary.gas), Sonstige: \(summary.other))."
+                        } else {
+                            importResultMessage = "Keine Daten importiert. Prüfe: Trennzeichen (Tab/;/,), Spaltennamen inkl. 'entryType' und Datumsformat (dd.MM.yy)."
+                        }
                     } catch {
                         importResultMessage = "Importfehler: \(error.localizedDescription)"
                     }
