@@ -4,5 +4,8 @@
 <dict>
 	<key>CFBundleGetInfoString</key>
 	<string></string>
+	<!-- Export Compliance: Set to false if app uses only exempt encryption (e.g., ATS/TLS, authentication, hash/signatures) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
