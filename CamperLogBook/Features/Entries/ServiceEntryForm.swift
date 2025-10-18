@@ -106,8 +106,7 @@ struct ServiceEntryForm: View {
                     saveEntry()
                 }
             }
-        }
-        .navigationTitle("Ver-/Entsorgung")
+            .navigationTitle("Ver-/Entsorgung")
         .sheet(isPresented: $showLocationPicker) {
             NavigationView {
                 LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)

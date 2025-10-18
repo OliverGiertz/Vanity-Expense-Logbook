@@ -104,7 +104,7 @@ struct OtherEntryForm: View {
                     saveEntry()
                 }
             }
-        }
+            }
         .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()

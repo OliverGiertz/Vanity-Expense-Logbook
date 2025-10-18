@@ -93,8 +93,7 @@ struct GasEntryForm: View {
                 }
                 Button("Speichern") { saveEntry() }
             }
-        }
-        .navigationTitle("Gasbeleg")
+            .navigationTitle("Gasbeleg")
         .sheet(isPresented: $showLocationPicker) {
             NavigationView {
                 LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
