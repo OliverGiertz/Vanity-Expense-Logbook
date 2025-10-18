@@ -78,7 +78,8 @@ struct FuelEntryForm: View {
     }()
 
     var body: some View {
-        Form {
+        NavigationView {
+            Form {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                         .submitLabel(.done)
@@ -189,7 +190,8 @@ struct FuelEntryForm: View {
                 }
                 .disabled(isLoading)
             }
-        .navigationTitle("Tankbeleg")
+            .navigationTitle("Tankbeleg")
+        }
         .sheet(isPresented: $showLocationPicker) {
             NavigationView {
                 LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)

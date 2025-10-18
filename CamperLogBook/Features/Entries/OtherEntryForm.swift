@@ -39,7 +39,8 @@ struct OtherEntryForm: View {
     @State private var showSuccessToast: Bool = false
 
     var body: some View {
-        Form {
+        NavigationView {
+            Form {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                 }
@@ -105,6 +106,7 @@ struct OtherEntryForm: View {
                 }
             }
             }
+        }
         .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()

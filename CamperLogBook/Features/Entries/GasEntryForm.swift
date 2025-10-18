@@ -36,7 +36,8 @@ struct GasEntryForm: View {
     @State private var showSuccessToast: Bool = false
 
     var body: some View {
-        Form {
+        NavigationView {
+            Form {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                         .submitLabel(.done)
@@ -94,6 +95,7 @@ struct GasEntryForm: View {
                 Button("Speichern") { saveEntry() }
             }
             .navigationTitle("Gasbeleg")
+        }
         .sheet(isPresented: $showLocationPicker) {
             NavigationView {
                 LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
