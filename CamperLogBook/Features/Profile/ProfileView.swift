@@ -20,6 +20,7 @@ struct ProfileView: View {
     @State private var licensePlate: String = ""
     @State private var brand: String = ""
     @State private var type: String = ""
+    @State private var tankVolumeText: String = "" // in Litern
     
     // Für die Eingabe einer neuen Kategorie
     @State private var newCategoryName: String = ""
@@ -43,6 +44,8 @@ struct ProfileView: View {
                     TextField("KFZ Kennzeichen", text: $licensePlate)
                     TextField("Automarke", text: $brand)
                     TextField("Fahrzeugtyp", text: $type)
+                    TextField("Tankvolumen (Liter)", text: $tankVolumeText)
+                        .keyboardType(.decimalPad)
                     Button("Profil speichern") {
                         saveProfile()
                     }
@@ -96,6 +99,11 @@ struct ProfileView: View {
             licensePlate = profile.licensePlate
             brand = profile.brand
             type = profile.type
+            if profile.tankVolume > 0 {
+                tankVolumeText = String(format: "%.1f", profile.tankVolume)
+            } else {
+                tankVolumeText = ""
+            }
         }
     }
     
@@ -110,6 +118,11 @@ struct ProfileView: View {
         profile.licensePlate = licensePlate
         profile.brand = brand
         profile.type = type
+        if let vol = Double(tankVolumeText.replacingOccurrences(of: ",", with: ".")), vol > 0 {
+            profile.tankVolume = vol
+        } else {
+            profile.tankVolume = 0
+        }
         do {
             try viewContext.save()
         } catch {

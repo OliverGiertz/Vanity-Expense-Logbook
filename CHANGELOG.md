@@ -2,6 +2,14 @@
 
 Dieses Dokument listet alle relevanten Änderungen (Features, Fixes, Änderungen) pro Version in absteigender Reihenfolge. Datumsformat: YYYY-MM-DD.
 
+## [2.3.2] - 2025-10-18
+- Neu: Bestätigungs-Toast nach dem Speichern für alle Eingabeformulare (Tank, Gas, Ver-/Entsorgung, Sonstige).
+- Neu (Tank): Zusätzliche Kennzahlen im Toast – „⌀ seit letztem“, „Gesamt“, „Trend“ (Pfeil + Differenz), „Kosten/100 km“ sowie Reichweitenschätzung.
+- Neu (Profil): Feld „Tankvolumen (Liter)“ ergänzt und in Core Data (VehicleProfile) gespeichert.
+- UX: Deutsches Zahlen-/Währungsformat (de_DE) für Verbrauch, Kosten und Reichweite im Tank-Toast.
+- Tech: Wiederverwendbare Toast-Komponente (`Shared/Components/Toast.swift`).
+- Wartung: App-Version auf 2.3.2 angehoben.
+
 ## [2.3.1] - 2025-09-06
 - Neu: Gemischter CSV-Import ohne Typauswahl in der UI. Import entscheidet pro Zeile anhand der Spalte `entryType` (FuelEntry, GasEntry, OtherEntry) bzw. heuristisch, wenn die Spalte fehlt.
 - Neu: Import-Zusammenfassung pro Typ (z. B. „Tank/Gas/Sonstige“) und klarere Fehlermeldung, wenn 0 Einträge importiert wurden.
