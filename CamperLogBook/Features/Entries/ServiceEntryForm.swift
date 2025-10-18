@@ -6,6 +6,7 @@ import CoreLocation
 struct ServiceEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var locationManager: LocationManager
+    @Environment(\.dismiss) private var dismiss
 
     @State private var date = Date()
     @State private var isSupply: Bool = false
@@ -39,8 +40,7 @@ struct ServiceEntryForm: View {
     @State private var showSuccessToast: Bool = false
 
     var body: some View {
-        NavigationView {
-            Form {
+        Form {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                         .submitLabel(.done)
@@ -106,31 +106,32 @@ struct ServiceEntryForm: View {
                     saveEntry()
                 }
             }
-            .navigationTitle("Ver-/Entsorgung")
-            .sheet(isPresented: $showLocationPicker) {
-                NavigationView {
-                    LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
-                }
+        }
+        .navigationTitle("Ver-/Entsorgung")
+        .sheet(isPresented: $showLocationPicker) {
+            NavigationView {
+                LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
             }
-            .sheet(isPresented: $showMailView) {
-                if let url = ErrorLogger.shared.getLogFileURL(),
-                   let logData = try? Data(contentsOf: url) {
-                    MailComposeView(
-                        recipients: ["logfile@vanityontour.de"],
-                        subject: "Fehlerlog",
-                        messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
-                        attachmentData: logData,
-                        attachmentMimeType: "text/plain",
-                        attachmentFileName: "error.log"
-                    )
-                } else {
-                    Text("Logdatei nicht verfügbar.")
-                }
+        }
+        .sheet(isPresented: $showMailView) {
+            if let url = ErrorLogger.shared.getLogFileURL(),
+               let logData = try? Data(contentsOf: url) {
+                MailComposeView(
+                    recipients: ["logfile@vanityontour.de"],
+                    subject: "Fehlerlog",
+                    messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
+                    attachmentData: logData,
+                    attachmentMimeType: "text/plain",
+                    attachmentFileName: "error.log"
+                )
+            } else {
+                Text("Logdatei nicht verfügbar.")
             }
-            .sheet(item: $receiptSource) { source in
-                ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-            }
-            .alert(isPresented: $showErrorAlert) {
+        }
+        .sheet(item: $receiptSource) { source in
+            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+        }
+        .alert(isPresented: $showErrorAlert) {
                 Alert(
                     title: Text("Fehler"),
                     message: Text(errorAlertMessage),
@@ -139,7 +140,6 @@ struct ServiceEntryForm: View {
                         showMailView = true
                     })
                 )
-            }
         }
         .toast(
             isPresented: $showSuccessToast,
@@ -191,6 +191,9 @@ struct ServiceEntryForm: View {
         do {
             try viewContext.save()
             withAnimation { showSuccessToast = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                dismiss()
+            }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern ServiceEntry in ServiceEntryForm")
             showErrorAlert = true

@@ -5,6 +5,7 @@ import PhotosUI
 import CoreLocation
 
 struct FuelEntryForm: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var locationManager: LocationManager
 
@@ -77,8 +78,7 @@ struct FuelEntryForm: View {
     }()
 
     var body: some View {
-        NavigationView {
-            Form {
+        Form {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                         .submitLabel(.done)
@@ -189,16 +189,17 @@ struct FuelEntryForm: View {
                 }
                 .disabled(isLoading)
             }
-            .navigationTitle("Tankbeleg")
-            .sheet(isPresented: $showLocationPicker) {
-                NavigationView {
-                    LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
-                }
+        }
+        .navigationTitle("Tankbeleg")
+        .sheet(isPresented: $showLocationPicker) {
+            NavigationView {
+                LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
             }
-            .sheet(item: $receiptSource) { source in
-                ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-            }
-            .alert(isPresented: $showErrorAlert) {
+        }
+        .sheet(item: $receiptSource) { source in
+            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+        }
+        .alert(isPresented: $showErrorAlert) {
                 Alert(
                     title: Text("Fehler"),
                     message: Text(errorAlertMessage),
@@ -207,21 +208,20 @@ struct FuelEntryForm: View {
                         showMailView = true
                     })
                 )
-            }
-            .sheet(isPresented: $showMailView) {
-                if let url = ErrorLogger.shared.getLogFileURL(),
-                   let logData = try? Data(contentsOf: url) {
-                    MailComposeView(
-                        recipients: ["logfile@vanityontour.de"],
-                        subject: "Fehlerlog",
-                        messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
-                        attachmentData: logData,
-                        attachmentMimeType: "text/plain",
-                        attachmentFileName: "error.log"
-                    )
-                } else {
-                    Text("Logdatei nicht verfügbar.")
-                }
+        }
+        .sheet(isPresented: $showMailView) {
+            if let url = ErrorLogger.shared.getLogFileURL(),
+               let logData = try? Data(contentsOf: url) {
+                MailComposeView(
+                    recipients: ["logfile@vanityontour.de"],
+                    subject: "Fehlerlog",
+                    messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
+                    attachmentData: logData,
+                    attachmentMimeType: "text/plain",
+                    attachmentFileName: "error.log"
+                )
+            } else {
+                Text("Logdatei nicht verfügbar.")
             }
         }
         .toast(
@@ -366,6 +366,11 @@ struct FuelEntryForm: View {
 
             clearFields()
             isLoading = false
+
+            // Nach kurzer Bestätigung zurück zur Übersicht
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                dismiss()
+            }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Speichern in FuelEntryForm")
             errorAlertMessage = "Fehler beim Speichern: \(error.localizedDescription)"
@@ -376,7 +381,7 @@ struct FuelEntryForm: View {
 
     private func calculateOverallAverageConsumption() -> Double? {
         // Durchschnittsverbrauch über alle Diesel-Belege (inkl. des gerade gespeicherten)
-        let request: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest()
+        let request = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
         request.predicate = NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
         do {
             let entries = try viewContext.fetch(request)
@@ -398,7 +403,7 @@ struct FuelEntryForm: View {
     private func calculateTrendText(recentConsumption: Double?) -> String? {
         guard let recent = recentConsumption else { return nil }
         // Ermittle den Verbrauch des vorherigen Tankvorgangs (ohne den neuen Eintrag)
-        let req: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest()
+        let req = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
         req.predicate = NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
         req.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         req.fetchOffset = 1 // neuesten (gerade gespeicherten) Eintrag überspringen

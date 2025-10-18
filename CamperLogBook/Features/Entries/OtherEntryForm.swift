@@ -4,6 +4,7 @@ import PhotosUI
 
 struct OtherEntryForm: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.dismiss) private var dismiss
 
     @State private var date = Date()
     @State private var selectedCategory: String = ""
@@ -38,8 +39,7 @@ struct OtherEntryForm: View {
     @State private var showSuccessToast: Bool = false
 
     var body: some View {
-        NavigationView {
-            Form {
+        Form {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                 }
@@ -104,23 +104,24 @@ struct OtherEntryForm: View {
                     saveEntry()
                 }
             }
-            .toolbar {
+        }
+        .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Fertig") { focusedField = nil }
                 }
             }
-            .navigationTitle("Sonstige Kosten")
-            .onAppear {
-                if let firstCat = categoriesFetched.first?.name {
-                    selectedCategory = firstCat
-                }
+        .navigationTitle("Sonstige Kosten")
+        .onAppear {
+            if let firstCat = categoriesFetched.first?.name {
+                selectedCategory = firstCat
             }
-            .sheet(item: $receiptSource) { source in
-                ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-            }
-            // Fehleralert mit Option zum Versenden des Logs
-            .alert(isPresented: $showErrorAlert) {
+        }
+        .sheet(item: $receiptSource) { source in
+            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+        }
+        // Fehleralert mit Option zum Versenden des Logs
+        .alert(isPresented: $showErrorAlert) {
                 Alert(
                     title: Text("Fehler"),
                     message: Text(errorAlertMessage),
@@ -129,21 +130,20 @@ struct OtherEntryForm: View {
                         showMailView = true
                     })
                 )
-            }
-            .sheet(isPresented: $showMailView) {
-                if let url = ErrorLogger.shared.getLogFileURL(),
-                   let logData = try? Data(contentsOf: url) {
-                    MailComposeView(
-                        recipients: ["logfile@vanityontour.de"],
-                        subject: "Fehlerlog",
-                        messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
-                        attachmentData: logData,
-                        attachmentMimeType: "text/plain",
-                        attachmentFileName: "error.log"
-                    )
-                } else {
-                    Text("Logdatei nicht verfügbar.")
-                }
+        }
+        .sheet(isPresented: $showMailView) {
+            if let url = ErrorLogger.shared.getLogFileURL(),
+               let logData = try? Data(contentsOf: url) {
+                MailComposeView(
+                    recipients: ["logfile@vanityontour.de"],
+                    subject: "Fehlerlog",
+                    messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
+                    attachmentData: logData,
+                    attachmentMimeType: "text/plain",
+                    attachmentFileName: "error.log"
+                )
+            } else {
+                Text("Logdatei nicht verfügbar.")
             }
         }
         .toast(
@@ -191,6 +191,9 @@ struct OtherEntryForm: View {
             try viewContext.save()
             clearFields()
             withAnimation { showSuccessToast = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                dismiss()
+            }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern OtherEntry in OtherEntryForm")
             errorAlertMessage = "Fehler beim Speichern des Eintrags: \(error.localizedDescription)"
