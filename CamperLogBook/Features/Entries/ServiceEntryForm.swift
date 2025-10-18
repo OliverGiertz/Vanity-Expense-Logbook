@@ -35,6 +35,9 @@ struct ServiceEntryForm: View {
     // Toggle für Standort speichern (default: aktiv)
     @State private var saveLocation: Bool = true
 
+    // Erfolgsmeldung (Toast)
+    @State private var showSuccessToast: Bool = false
+
     var body: some View {
         NavigationView {
             Form {
@@ -138,6 +141,14 @@ struct ServiceEntryForm: View {
                 )
             }
         }
+        .toast(
+            isPresented: $showSuccessToast,
+            title: "Eintrag gespeichert",
+            subtitle: nil,
+            systemImage: "checkmark.circle.fill",
+            duration: 2.0,
+            alignment: .bottom
+        )
     }
     
     private func saveEntry() {
@@ -179,6 +190,7 @@ struct ServiceEntryForm: View {
         }
         do {
             try viewContext.save()
+            withAnimation { showSuccessToast = true }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern ServiceEntry in ServiceEntryForm")
             showErrorAlert = true

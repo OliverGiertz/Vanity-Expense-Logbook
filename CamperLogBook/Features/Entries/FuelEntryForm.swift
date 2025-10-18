@@ -43,6 +43,39 @@ struct FuelEntryForm: View {
     // Toggle für Standort speichern (default: aktiv)
     @State private var saveLocation: Bool = true
 
+    // Erfolgsmeldung (Toast)
+    @State private var showSuccessToast: Bool = false
+    @State private var successSubtitle: String = ""
+
+    // Locale-Formatter (de_DE)
+    private static let deDecimal2: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 2
+        f.maximumFractionDigits = 2
+        f.usesGroupingSeparator = true
+        return f
+    }()
+    private static let deInteger: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 0
+        f.usesGroupingSeparator = true
+        return f
+    }()
+    private static let deCurrency2: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.numberStyle = .currency
+        f.currencyCode = "EUR"
+        f.minimumFractionDigits = 2
+        f.maximumFractionDigits = 2
+        return f
+    }()
+
     var body: some View {
         NavigationView {
             Form {
@@ -191,6 +224,14 @@ struct FuelEntryForm: View {
                 }
             }
         }
+        .toast(
+            isPresented: $showSuccessToast,
+            title: "Eintrag gespeichert",
+            subtitle: successSubtitle,
+            systemImage: "checkmark.circle.fill",
+            duration: 2.4,
+            alignment: .bottom
+        )
     }
     
     private func computeTotalCost() {
@@ -300,6 +341,29 @@ struct FuelEntryForm: View {
         do {
             try viewContext.save()
             ErrorLogger.shared.log(message: "Eintrag erfolgreich gespeichert in FuelEntryForm")
+
+            // Kurze, prägnante Info bereitstellen
+            let recentText: String? = {
+                if let c = consumptionPer100km, let s = formatDecimal2(c) {
+                    return "⌀ seit letztem: \(s) L/100 km"
+                }
+                return nil
+            }()
+            let overallAvg = calculateOverallAverageConsumption()
+            let overallText: String? = {
+                if let avg = overallAvg, let s = formatDecimal2(avg) { return "Gesamt: \(s) L/100 km" }
+                return nil
+            }()
+            let costPer100Text: String? = createCostPer100Text(totalCost: costValue)
+            let trendText: String? = calculateTrendText(recentConsumption: consumptionPer100km)
+            let rangeTextOrHint: String? = calculateRangeText(usingOverall: overallAvg ?? consumptionPer100km)
+
+            let parts = [recentText, overallText, trendText, costPer100Text, rangeTextOrHint]
+                .compactMap { $0 }
+                .filter { !$0.isEmpty }
+            successSubtitle = parts.joined(separator: " • ")
+            withAnimation { showSuccessToast = true }
+
             clearFields()
             isLoading = false
         } catch {
@@ -308,6 +372,94 @@ struct FuelEntryForm: View {
             showErrorAlert = true
             isLoading = false
         }
+    }
+
+    private func calculateOverallAverageConsumption() -> Double? {
+        // Durchschnittsverbrauch über alle Diesel-Belege (inkl. des gerade gespeicherten)
+        let request: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest()
+        request.predicate = NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
+        do {
+            let entries = try viewContext.fetch(request)
+            let sortedAsc = entries.sorted { $0.date < $1.date }
+            guard sortedAsc.count >= 2,
+                  let first = sortedAsc.first,
+                  let last = sortedAsc.last,
+                  last.currentKm > first.currentKm else { return nil }
+            let totalKm = Double(last.currentKm - first.currentKm)
+            let totalLiters = entries.reduce(0.0) { $0 + $1.liters }
+            let avg = (totalLiters / totalKm) * 100
+            return avg
+        } catch {
+            ErrorLogger.shared.log(error: error, additionalInfo: "Fehler bei Durchschnittsberechnung in FuelEntryForm")
+            return nil
+        }
+    }
+
+    private func calculateTrendText(recentConsumption: Double?) -> String? {
+        guard let recent = recentConsumption else { return nil }
+        // Ermittle den Verbrauch des vorherigen Tankvorgangs (ohne den neuen Eintrag)
+        let req: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest()
+        req.predicate = NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
+        req.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+        req.fetchOffset = 1 // neuesten (gerade gespeicherten) Eintrag überspringen
+        req.fetchLimit = 2
+        do {
+            let items = try viewContext.fetch(req)
+            guard items.count == 2 else { return nil }
+            let prev = items[0]
+            let prevPrev = items[1]
+            let kmDiff = prev.currentKm - prevPrev.currentKm
+            guard kmDiff > 0 else { return nil }
+            let prevConsumption = (prev.liters / Double(kmDiff)) * 100
+            let delta = recent - prevConsumption
+            let arrow: String
+            if abs(delta) < 0.001 { arrow = "=" }
+            else if delta < 0 { arrow = "↓" }
+            else { arrow = "↑" }
+            if let s = formatDecimal2(abs(delta)) { return "Trend: \(arrow) \(s) L/100 km" }
+            return nil
+        } catch {
+            ErrorLogger.shared.log(error: error, additionalInfo: "Fehler bei Trendberechnung in FuelEntryForm")
+            return nil
+        }
+    }
+
+    private func calculateRangeText(usingOverall avgOrRecent: Double?) -> String? {
+        // Reichweitenschätzung basierend auf Tankvolumen im Profil und Durchschnitt
+        let req: NSFetchRequest<VehicleProfile> = VehicleProfile.fetchRequest() as! NSFetchRequest<VehicleProfile>
+        do {
+            let profiles = try viewContext.fetch(req)
+            guard let profile = profiles.first else { return nil }
+            let tankVol = profile.tankVolume
+            guard tankVol > 0 else { return "Profil: Tankvolumen pflegen" }
+            guard let cons = avgOrRecent, cons > 0 else { return nil }
+            let range = (tankVol / cons) * 100.0
+            if let s = formatInteger(range) { return "Reichweite ~ \(s) km" }
+            return nil
+        } catch {
+            return nil
+        }
+    }
+
+    private func createCostPer100Text(totalCost: Double) -> String? {
+        if let diff = kmDifference, diff > 0 {
+            let costPer100 = (totalCost / Double(diff)) * 100.0
+            if let costStr = formatCurrency2(costPer100) {
+                return "Kosten: \(costStr)/100 km"
+            }
+        }
+        return nil
+    }
+
+    // MARK: - Format Helpers (de_DE)
+    private func formatDecimal2(_ value: Double) -> String? {
+        FuelEntryForm.deDecimal2.string(from: NSNumber(value: value))
+    }
+    private func formatInteger(_ value: Double) -> String? {
+        FuelEntryForm.deInteger.string(from: NSNumber(value: round(value)))
+    }
+    private func formatCurrency2(_ value: Double) -> String? {
+        FuelEntryForm.deCurrency2.string(from: NSNumber(value: value))
     }
     
     private func clearFields() {

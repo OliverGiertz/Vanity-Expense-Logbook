@@ -31,6 +31,9 @@ struct GasEntryForm: View {
     // Neuer State: Toggle für Standort speichern (default: aktiv)
     @State private var saveLocation: Bool = true
 
+    // Erfolgsmeldung (Toast)
+    @State private var showSuccessToast: Bool = false
+
     var body: some View {
         NavigationView {
             Form {
@@ -125,6 +128,14 @@ struct GasEntryForm: View {
                 }
             }
         }
+        .toast(
+            isPresented: $showSuccessToast,
+            title: "Eintrag gespeichert",
+            subtitle: nil,
+            systemImage: "checkmark.circle.fill",
+            duration: 2.0,
+            alignment: .bottom
+        )
     }
     
     private func saveEntry() {
@@ -180,6 +191,7 @@ struct GasEntryForm: View {
             try viewContext.save()
             ErrorLogger.shared.log(message: "GasEntry erfolgreich gespeichert in GasEntryForm")
             clearFields()
+            withAnimation { showSuccessToast = true }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern GasEntry in GasEntryForm")
             errorAlertMessage = "Fehler beim Speichern des GasEntry: \(error.localizedDescription)"

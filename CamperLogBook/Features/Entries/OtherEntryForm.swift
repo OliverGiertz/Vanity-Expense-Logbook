@@ -34,6 +34,9 @@ struct OtherEntryForm: View {
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
 
+    // Erfolgsmeldung (Toast)
+    @State private var showSuccessToast: Bool = false
+
     var body: some View {
         NavigationView {
             Form {
@@ -143,6 +146,14 @@ struct OtherEntryForm: View {
                 }
             }
         }
+        .toast(
+            isPresented: $showSuccessToast,
+            title: "Eintrag gespeichert",
+            subtitle: nil,
+            systemImage: "checkmark.circle.fill",
+            duration: 2.0,
+            alignment: .bottom
+        )
     }
     
     private func saveEntry() {
@@ -179,6 +190,7 @@ struct OtherEntryForm: View {
         do {
             try viewContext.save()
             clearFields()
+            withAnimation { showSuccessToast = true }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern OtherEntry in OtherEntryForm")
             errorAlertMessage = "Fehler beim Speichern des Eintrags: \(error.localizedDescription)"
