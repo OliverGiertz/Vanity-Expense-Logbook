@@ -189,7 +189,6 @@ struct FuelEntryForm: View {
                 }
                 .disabled(isLoading)
             }
-        }
         .navigationTitle("Tankbeleg")
         .sheet(isPresented: $showLocationPicker) {
             NavigationView {
