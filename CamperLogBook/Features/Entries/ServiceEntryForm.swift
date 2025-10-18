@@ -129,7 +129,7 @@ struct ServiceEntryForm: View {
                 Text("Logdatei nicht verfügbar.")
             }
         }
-        .sheet(item: $receiptSource) { source in
+        .sheet(item: $receiptSource) { _ in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
         .alert(isPresented: $showErrorAlert) {

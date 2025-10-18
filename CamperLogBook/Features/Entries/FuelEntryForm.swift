@@ -85,53 +85,36 @@ struct FuelEntryForm: View {
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
-                
                 Section(header: Text("Kraftstoffauswahl")) {
                     Toggle("Diesel", isOn: $isDiesel)
                     Toggle("AdBlue", isOn: $isAdBlue)
                 }
-                
                 Section(header: Text("Fahrzeuginformationen")) {
                     TextField("Aktueller KM Stand", text: $currentKm)
                         .keyboardType(.numberPad)
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: currentKm) { _, _ in updateKmDifference() }
-                    
                     if let diff = kmDifference {
-                        HStack {
-                            Text("Gefahrene Kilometer:")
-                            Spacer()
-                            Text("\(diff) km").bold()
-                        }
+                        HStack { Text("Gefahrene Kilometer:"); Spacer(); Text("\(diff) km").bold() }
                     }
-                    
                     if let consumption = consumptionPer100km {
-                        HStack {
-                            Text("Verbrauch pro 100km:")
-                            Spacer()
-                            Text(String(format: "%.2f L", consumption)).bold()
-                        }
+                        HStack { Text("Verbrauch pro 100km:"); Spacer(); Text(String(format: "%.2f L", consumption)).bold() }
                     }
                 }
-                
                 Section(header: Text("Tankdaten")) {
                     TextField("Getankte Liter", text: $liters)
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: liters) { _, _ in computeTotalCost() }
-                    
                     TextField("Kosten pro Liter", text: $costPerLiter)
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: costPerLiter) { _, _ in computeTotalCost() }
-                    
-                    TextField("Gesamtkosten", text: $totalCost)
-                        .disabled(true)
+                    TextField("Gesamtkosten", text: $totalCost).disabled(true)
                 }
-                
                 Section(header: Text("Standort")) {
                     Toggle("Standort speichern", isOn: $saveLocation)
                     if saveLocation {
@@ -141,98 +124,42 @@ struct FuelEntryForm: View {
                             Text("Automatisch ermittelt: \(locationManager.address)")
                         } else if let loc = selectedLocation {
                             Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
-                        } else {
-                            Text("Kein Standort ermittelt")
-                        }
-                        Button("Standort manuell auswählen") {
-                            showLocationPicker = true
-                        }
-                    } else {
-                        Text("Standort wird nicht gespeichert")
-                    }
+                        } else { Text("Kein Standort ermittelt") }
+                        Button("Standort manuell auswählen") { showLocationPicker = true }
+                    } else { Text("Standort wird nicht gespeichert") }
                 }
-                
                 Section(header: Text("Beleg (Bild/PDF)")) {
                     if let image = receiptImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
+                        Image(uiImage: image).resizable().scaledToFit().frame(height: 150)
                     } else if pdfData != nil {
-                        Image(systemName: "doc.richtext")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
+                        Image(systemName: "doc.richtext").resizable().scaledToFit().frame(height: 150)
                     }
-                    
-                    Button("Beleg auswählen") {
-                        showingReceiptOptions = true
-                    }
-                    .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
-                        Button("Aus Fotos wählen") { receiptSource = .photo }
-                        Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
-                        Button("Kamera Scannen") { receiptSource = .scanner }
-                        Button("Abbrechen", role: .cancel) { }
-                    }
-                }
-                
-                Button(action: {
-                    isLoading = true
-                    saveEntry()
-                }) {
-                    HStack {
-                        Text("Speichern")
-                        if isLoading {
-                            Spacer()
-                            ProgressView()
+                    Button("Beleg auswählen") { showingReceiptOptions = true }
+                        .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
+                            Button("Aus Fotos wählen") { receiptSource = .photo }
+                            Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
+                            Button("Kamera Scannen") { receiptSource = .scanner }
+                            Button("Abbrechen", role: .cancel) { }
                         }
-                    }
+                }
+                Button(action: { isLoading = true; saveEntry() }) {
+                    HStack { Text("Speichern"); if isLoading { Spacer(); ProgressView() } }
                 }
                 .disabled(isLoading)
             }
             .navigationTitle("Tankbeleg")
         }
-        .sheet(isPresented: $showLocationPicker) {
-            NavigationView {
-                LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
-            }
-        }
-        .sheet(item: $receiptSource) { source in
-            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
+        .sheet(isPresented: $showLocationPicker) { NavigationView { LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress) } }
+        .sheet(item: $receiptSource) { _ in ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData) }
         .alert(isPresented: $showErrorAlert) {
-                Alert(
-                    title: Text("Fehler"),
-                    message: Text(errorAlertMessage),
-                    primaryButton: .default(Text("OK")),
-                    secondaryButton: .default(Text("Log senden"), action: {
-                        showMailView = true
-                    })
-                )
+            Alert(title: Text("Fehler"), message: Text(errorAlertMessage), primaryButton: .default(Text("OK")), secondaryButton: .default(Text("Log senden"), action: { showMailView = true }))
         }
         .sheet(isPresented: $showMailView) {
-            if let url = ErrorLogger.shared.getLogFileURL(),
-               let logData = try? Data(contentsOf: url) {
-                MailComposeView(
-                    recipients: ["logfile@vanityontour.de"],
-                    subject: "Fehlerlog",
-                    messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
-                    attachmentData: logData,
-                    attachmentMimeType: "text/plain",
-                    attachmentFileName: "error.log"
-                )
-            } else {
-                Text("Logdatei nicht verfügbar.")
-            }
+            if let url = ErrorLogger.shared.getLogFileURL(), let logData = try? Data(contentsOf: url) {
+                MailComposeView(recipients: ["logfile@vanityontour.de"], subject: "Fehlerlog", messageBody: "Bitte prüfe den beigefügten Fehlerlog.", attachmentData: logData, attachmentMimeType: "text/plain", attachmentFileName: "error.log")
+            } else { Text("Logdatei nicht verfügbar.") }
         }
-        .toast(
-            isPresented: $showSuccessToast,
-            title: "Eintrag gespeichert",
-            subtitle: successSubtitle,
-            systemImage: "checkmark.circle.fill",
-            duration: 2.4,
-            alignment: .bottom
-        )
+        .toast(isPresented: $showSuccessToast, title: "Eintrag gespeichert", subtitle: successSubtitle, systemImage: "checkmark.circle.fill", duration: 2.4, alignment: .bottom)
     }
     
     private func computeTotalCost() {

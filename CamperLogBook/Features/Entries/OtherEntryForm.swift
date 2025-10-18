@@ -101,61 +101,33 @@ struct OtherEntryForm: View {
                     }
                 }
                 
-                Button("Speichern") {
-                    saveEntry()
-                }
+                Button("Speichern") { saveEntry() }
             }
-            }
-        }
-        .toolbar {
+            .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Fertig") { focusedField = nil }
                 }
             }
-        .navigationTitle("Sonstige Kosten")
-        .onAppear {
-            if let firstCat = categoriesFetched.first?.name {
-                selectedCategory = firstCat
+            .navigationTitle("Sonstige Kosten")
+            .onAppear {
+                if let firstCat = categoriesFetched.first?.name {
+                    selectedCategory = firstCat
+                }
             }
         }
-        .sheet(item: $receiptSource) { source in
+        .sheet(item: $receiptSource) { _ in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
-        // Fehleralert mit Option zum Versenden des Logs
         .alert(isPresented: $showErrorAlert) {
-                Alert(
-                    title: Text("Fehler"),
-                    message: Text(errorAlertMessage),
-                    primaryButton: .default(Text("OK")),
-                    secondaryButton: .default(Text("Log senden"), action: {
-                        showMailView = true
-                    })
-                )
+            Alert(title: Text("Fehler"), message: Text(errorAlertMessage), primaryButton: .default(Text("OK")), secondaryButton: .default(Text("Log senden"), action: { showMailView = true }))
         }
         .sheet(isPresented: $showMailView) {
-            if let url = ErrorLogger.shared.getLogFileURL(),
-               let logData = try? Data(contentsOf: url) {
-                MailComposeView(
-                    recipients: ["logfile@vanityontour.de"],
-                    subject: "Fehlerlog",
-                    messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
-                    attachmentData: logData,
-                    attachmentMimeType: "text/plain",
-                    attachmentFileName: "error.log"
-                )
-            } else {
-                Text("Logdatei nicht verfügbar.")
-            }
+            if let url = ErrorLogger.shared.getLogFileURL(), let logData = try? Data(contentsOf: url) {
+                MailComposeView(recipients: ["logfile@vanityontour.de"], subject: "Fehlerlog", messageBody: "Bitte prüfe den beigefügten Fehlerlog.", attachmentData: logData, attachmentMimeType: "text/plain", attachmentFileName: "error.log")
+            } else { Text("Logdatei nicht verfügbar.") }
         }
-        .toast(
-            isPresented: $showSuccessToast,
-            title: "Eintrag gespeichert",
-            subtitle: nil,
-            systemImage: "checkmark.circle.fill",
-            duration: 2.0,
-            alignment: .bottom
-        )
+        .toast(isPresented: $showSuccessToast, title: "Eintrag gespeichert", subtitle: nil, systemImage: "checkmark.circle.fill", duration: 2.0, alignment: .bottom)
     }
     
     private func saveEntry() {
