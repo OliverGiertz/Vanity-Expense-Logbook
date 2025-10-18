@@ -169,6 +169,7 @@ public class VehicleProfile: NSManagedObject, Identifiable {
     @NSManaged public var licensePlate: String
     @NSManaged public var brand: String
     @NSManaged public var type: String
+    @NSManaged public var tankVolume: Double
 }
 
 extension VehicleProfile {
