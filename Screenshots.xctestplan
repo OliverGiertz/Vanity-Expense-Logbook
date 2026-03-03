@@ -1,0 +1,32 @@
+{
+  "configurations" : [
+    {
+      "id" : "BBEEB7FE-29EB-47B4-9BE9-53C7EDEBE299",
+      "name" : "Screenshots",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:CamperLogBook.xcodeproj",
+      "identifier" : "A79EA8602D58A057001C1D0B",
+      "name" : "CamperLogBook"
+    }
+  },
+  "testTargets" : [
+    {
+      "selectedTests" : [
+        "ScreenshotsUITests\/test_makeScreens()"
+      ],
+      "target" : {
+        "containerPath" : "container:CamperLogBook.xcodeproj",
+        "identifier" : "A79EA87F2D58A059001C1D0B",
+        "name" : "CamperLogBookUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

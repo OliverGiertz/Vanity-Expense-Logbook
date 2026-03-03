@@ -1,0 +1,15 @@
+# fastlane/Appfile
+app_identifier("VanityOnTour.CamperLogBook")   # z.B. de.vanityontour.expenselogbook
+apple_id("oliver@giertz.biz")                  # deine Apple-ID (nur lokal genutzt)
+itc_team_id("example")                     # App Store Connect Team ID (optional)
+team_id("T5A3ZR4938")                        # Apple Developer Team ID (optional)
+
+# Optional lokal: Wenn du die .p8-Datei lokal nutzt, kannst du sie hier referenzieren
+# app_store_connect_api_key(
+#   key_id: "ABCDEF1234",
+#   issuer_id: "00000000-0000-0000-0000-000000000000",
+#   key_filepath: "./fastlane/AuthKey_ABCDEF1234.p8",
+#   duration: 1200,
+#   in_house: false
+# )
+

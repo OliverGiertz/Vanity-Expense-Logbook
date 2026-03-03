@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "2600"
-   version = "2.2">
+   version = "2.1">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
@@ -13,8 +13,9 @@
             buildForProfiling = "NO"
             buildForArchiving = "NO"
             buildForAnalyzing = "NO">
-            <AutocreatedTestPlanReference>
-            </AutocreatedTestPlanReference>
+            <TestPlanReference
+               reference = "container:Screenshots.xctestplan">
+            </TestPlanReference>
          </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -36,20 +37,14 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      shouldAutocreateTestPlan = "YES">
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <TestPlans>
+         <TestPlanReference
+            reference = "container:Screenshots.xctestplan"
+            default = "YES">
+         </TestPlanReference>
+      </TestPlans>
       <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A79EA8752D58A059001C1D0B"
-               BuildableName = "CamperLogBookTests.xctest"
-               BlueprintName = "CamperLogBookTests"
-               ReferencedContainer = "container:CamperLogBook.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
          <TestableReference
             skipped = "NO"
             parallelizable = "YES">
@@ -58,17 +53,6 @@
                BlueprintIdentifier = "A79EA87F2D58A059001C1D0B"
                BuildableName = "CamperLogBookUITests.xctest"
                BlueprintName = "CamperLogBookUITests"
-               ReferencedContainer = "container:CamperLogBook.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A7BD03F62EA2ADD10082C80A"
-               BuildableName = "CamperLogBookUITestsFastlane.xctest"
-               BlueprintName = "CamperLogBookUITestsFastlane"
                ReferencedContainer = "container:CamperLogBook.xcodeproj">
             </BuildableReference>
          </TestableReference>

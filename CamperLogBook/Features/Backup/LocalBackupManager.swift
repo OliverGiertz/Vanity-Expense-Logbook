@@ -2,6 +2,7 @@ import Foundation
 import CoreData
 import UIKit
 import SwiftUI
+import UserNotifications
 
 /// Hauptklasse zur Verwaltung von lokalen Backups
 class LocalBackupManager: ObservableObject {

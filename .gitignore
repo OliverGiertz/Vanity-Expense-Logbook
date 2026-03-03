@@ -1,0 +1,43 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+build/
+*.ipa
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+
+# Fastlane – private keys & credentials (NEVER commit these!)
+fastlane/AuthKey_*.p8
+*.p8
+*.p12
+*.mobileprovision
+fastlane/.env
+fastlane/.env.*
+
+# Environment / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Ruby / Bundler
+vendor/bundle/
+
+# Backup & temp files
+*.zip
+*.bak
+tmp/

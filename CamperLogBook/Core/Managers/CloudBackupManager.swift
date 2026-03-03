@@ -2,6 +2,7 @@ import Foundation
 import CloudKit
 import CoreData
 import UIKit
+import UserNotifications
 
 /// Verwalter für iCloud-Backups der App.
 /// Sichert CoreData-Store, Belege und Versionsinformationen als ZIP‑Archiv in iCloud.
@@ -69,6 +70,17 @@ class CloudBackupManager: ObservableObject {
         }
     }
     
+    /// Hilfsfunktion, um Änderungen sicher auf dem Main-Thread durchzuführen.
+    private func updateOnMain(_ action: @escaping () -> Void) {
+        if Thread.isMainThread {
+            action()
+        } else {
+            DispatchQueue.main.async {
+                action()
+            }
+        }
+    }
+    
     /// Erstellt ein Backup der App-Daten und lädt es in iCloud hoch.
     func createBackup(completion: @escaping (Bool, String?) -> Void) {
         guard let coreDataCoordinator = coreDataCoordinator,
@@ -77,16 +89,20 @@ class CloudBackupManager: ObservableObject {
             return
         }
         
-        isBackupInProgress = true
-        backupProgress = 0.0
-        lastErrorMessage = nil
+        updateOnMain {
+            self.isBackupInProgress = true
+            self.backupProgress = 0.0
+            self.lastErrorMessage = nil
+        }
         
         // Erstelle ein temporäres Verzeichnis
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         do {
             try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         } catch {
-            isBackupInProgress = false
+            updateOnMain {
+                self.isBackupInProgress = false
+            }
             completion(false, "Failed to create temporary directory: \(error.localizedDescription)")
             return
         }
@@ -100,10 +116,10 @@ class CloudBackupManager: ObservableObject {
         coreDataCoordinator.exportStore(to: coreDataURL) { [weak self] success, errorString in
             guard let self = self else { return }
             if !success {
-                DispatchQueue.main.async {
+                self.updateOnMain {
                     self.isBackupInProgress = false
-                    completion(false, "CoreData export failed: \(errorString ?? "unknown error")")
                 }
+                completion(false, "CoreData export failed: \(errorString ?? "unknown error")")
                 return
             }
             DispatchQueue.main.async { self.backupProgress = 0.3 }
@@ -112,10 +128,10 @@ class CloudBackupManager: ObservableObject {
             receiptCoordinator.exportReceipts(to: receiptsURL) { [weak self] success, receiptCount, errorString in
                 guard let self = self else { return }
                 if !success {
-                    DispatchQueue.main.async {
+                    self.updateOnMain {
                         self.isBackupInProgress = false
-                        completion(false, "Receipts export failed: \(errorString ?? "unknown error")")
                     }
+                    completion(false, "Receipts export failed: \(errorString ?? "unknown error")")
                     return
                 }
                 DispatchQueue.main.async { self.backupProgress = 0.6 }
@@ -131,10 +147,10 @@ class CloudBackupManager: ObservableObject {
                     let versionData = try PropertyListSerialization.data(fromPropertyList: versionInfo, format: .xml, options: 0)
                     try versionData.write(to: versionInfoPath)
                 } catch {
-                    DispatchQueue.main.async {
+                    self.updateOnMain {
                         self.isBackupInProgress = false
-                        completion(false, "Failed to write version info: \(error.localizedDescription)")
                     }
+                    completion(false, "Failed to write version info: \(error.localizedDescription)")
                     return
                 }
                 
@@ -143,10 +159,10 @@ class CloudBackupManager: ObservableObject {
                 do {
                     try FileManager.default.zipItem(at: tempDir, to: zipURL)
                 } catch {
-                    DispatchQueue.main.async {
+                    self.updateOnMain {
                         self.isBackupInProgress = false
-                        completion(false, "Failed to create ZIP archive: \(error.localizedDescription)")
                     }
+                    completion(false, "Failed to create ZIP archive: \(error.localizedDescription)")
                     return
                 }
                 DispatchQueue.main.async { self.backupProgress = 0.8 }
@@ -178,11 +194,12 @@ class CloudBackupManager: ObservableObject {
         record["backupAsset"] = CKAsset(fileURL: zipURL)
         
         let modifyOp = CKModifyRecordsOperation(recordsToSave: [record], recordIDsToDelete: nil)
-        modifyOp.modifyRecordsCompletionBlock = { savedRecords, deletedRecordIDs, error in
-            if let error = error {
-                completion(false, "Cloud upload failed: \(error.localizedDescription)")
-            } else {
+        modifyOp.modifyRecordsResultBlock = { result in
+            switch result {
+            case .success:
                 completion(true, nil)
+            case .failure(let error):
+                completion(false, "Cloud upload failed: \(error.localizedDescription)")
             }
         }
         modifyOp.qualityOfService = .userInitiated
@@ -191,9 +208,11 @@ class CloudBackupManager: ObservableObject {
     
     /// Stellt ein Backup aus iCloud wieder her.
     func restoreBackup(completion: @escaping (Bool, String?) -> Void) {
-        isRestoreInProgress = true
-        restoreProgress = 0.0
-        lastErrorMessage = nil
+        updateOnMain {
+            self.isRestoreInProgress = true
+            self.restoreProgress = 0.0
+            self.lastErrorMessage = nil
+        }
         
         // Hole das Backup-Record aus iCloud
         privateDatabase.fetch(withRecordID: backupRecordID) { [weak self] record, error in

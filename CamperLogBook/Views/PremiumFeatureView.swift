@@ -9,6 +9,7 @@
 import SwiftUI
 
 /// Ansicht zum Kauf von Premium-Features
+@available(iOS 15.0, *)
 struct PremiumFeatureView: View {
     @Environment(\.dismiss) var dismiss
     @ObservedObject private var premiumManager = PremiumFeatureManager.shared
@@ -124,6 +125,7 @@ struct FeatureRow: View {
     }
 }
 
+@available(iOS 15.0, *)
 struct PremiumFeatureView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {

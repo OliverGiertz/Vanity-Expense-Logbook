@@ -2,6 +2,15 @@
 
 Dieses Dokument listet alle relevanten Änderungen (Features, Fixes, Änderungen) pro Version in absteigender Reihenfolge. Datumsformat: YYYY-MM-DD.
 
+## [2.3.3] - 2025-10-25
+- Fix: Cloud/iCloud-Backups aktualisieren Fortschrittsanzeigen wieder zuverlässig, weil Statusänderungen nun ausschließlich auf dem Main-Thread veröffentlicht werden.
+- Fix: Backup/Restore arbeitet thread-safe – Core-Data-Backup- und Receipt-Koordinatoren verwenden private Kontexte, wodurch Hintergrundimporte keine „context accessed from incorrect thread“-Fehler mehr auslösen.
+- Verbesserung: Backup-UI bindet den `CloudBackupManager` jetzt als `@StateObject`, womit ProgressViews und Buttons sofort auf laufende Jobs reagieren.
+- Fix: Mail-Export bricht nicht länger auf Geräten ohne eingerichteten Account ab – es erscheint stattdessen ein Hinweisdialog.
+- Verbesserung: In-App-Käufe laufen jetzt auf StoreKit 2 (async `Product.purchase` + `Transaction.updates`) und verzichten vollständig auf die seit iOS 18 veralteten `SKPaymentQueue`-APIs.
+- Änderung: Automatische Backups nutzen das BackgroundTasks-Framework (`BGAppRefreshTask`) anstelle des veralteten `setMinimumBackgroundFetchInterval`, inklusive neuer Task-Identifier-Konfiguration.
+- Wartung: Versionsnummer auf 2.3.3 erhöht.
+
 ## [2.3.2] - 2025-10-18
 - Neu: Bestätigungs-Toast nach dem Speichern für alle Eingabeformulare (Tank, Gas, Ver-/Entsorgung, Sonstige).
 - Neu (Tank): Zusätzliche Kennzahlen im Toast – „⌀ seit letztem“, „Gesamt“, „Trend“ (Pfeil + Differenz), „Kosten/100 km“ sowie Reichweitenschätzung.

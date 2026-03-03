@@ -1,15 +1,22 @@
 import UIKit
 import UserNotifications
 import CoreData
+import BackgroundTasks
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    private let autoBackupTaskIdentifier = "de.vanityontour.camperlogbook.autobackup"
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         // Registriere für Benachrichtigungen
         UNUserNotificationCenter.current().delegate = self
         
-        // Registriere für Background-Refresh
-        application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
+        registerBackgroundTasks()
+        scheduleAutomaticBackupIfNeeded()
+        
+        // Fallback für iOS 12 und älter
+        if #unavailable(iOS 13.0) {
+            application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
+        }
         
         return true
     }
@@ -57,6 +64,40 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 print("Automatisches Backup fehlgeschlagen: \(errorMessage ?? "Unbekannter Fehler")")
                 completion(false)
             }
+        }
+    }
+    
+    private func registerBackgroundTasks() {
+        guard #available(iOS 13.0, *) else { return }
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: autoBackupTaskIdentifier, using: nil) { task in
+            self.handleAutoBackup(task: task as! BGAppRefreshTask)
+        }
+    }
+    
+    private func scheduleAutomaticBackupIfNeeded() {
+        guard #available(iOS 13.0, *),
+              UserDefaults.standard.bool(forKey: "automaticBackupsEnabled") else { return }
+        
+        let request = BGAppRefreshTaskRequest(identifier: autoBackupTaskIdentifier)
+        request.earliestBeginDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())
+        
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            print("Konnte Hintergrund-Backup nicht planen: \(error.localizedDescription)")
+        }
+    }
+    
+    @available(iOS 13.0, *)
+    private func handleAutoBackup(task: BGAppRefreshTask) {
+        scheduleAutomaticBackupIfNeeded()
+        
+        task.expirationHandler = {
+            task.setTaskCompleted(success: false)
+        }
+        
+        performAutomaticBackup { success in
+            task.setTaskCompleted(success: success)
         }
     }
 }

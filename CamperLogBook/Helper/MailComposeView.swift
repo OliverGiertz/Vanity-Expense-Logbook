@@ -16,9 +16,9 @@
 
 import SwiftUI
 import MessageUI
+import UIKit
 
 struct MailComposeView: UIViewControllerRepresentable {
-    typealias UIViewControllerType = MFMailComposeViewController
     @Environment(\.presentationMode) var presentation
     var recipients: [String]
     var subject: String
@@ -29,31 +29,53 @@ struct MailComposeView: UIViewControllerRepresentable {
     
     class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
         var parent: MailComposeView
+        
         init(parent: MailComposeView) {
             self.parent = parent
         }
+        
         func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
             controller.dismiss(animated: true) {
                 self.parent.presentation.wrappedValue.dismiss()
             }
         }
+        
+        func presentFallbackAlert(on controller: UIViewController) {
+            let alert = UIAlertController(
+                title: "Mail nicht verfügbar",
+                message: "Bitte richte einen Mail-Account ein oder verwende eine andere Freigabeart.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+                self.parent.presentation.wrappedValue.dismiss()
+            })
+            controller.present(alert, animated: true)
+        }
     }
     
     func makeCoordinator() -> Coordinator {
-        return Coordinator(parent: self)
+        Coordinator(parent: self)
     }
     
-    func makeUIViewController(context: Context) -> MFMailComposeViewController {
-        let vc = MFMailComposeViewController()
-        vc.mailComposeDelegate = context.coordinator
-        vc.setToRecipients(recipients)
-        vc.setSubject(subject)
-        vc.setMessageBody(messageBody, isHTML: false)
-        if let data = attachmentData {
-            vc.addAttachmentData(data, mimeType: attachmentMimeType, fileName: attachmentFileName)
+    func makeUIViewController(context: Context) -> UIViewController {
+        if MFMailComposeViewController.canSendMail() {
+            let mailVC = MFMailComposeViewController()
+            mailVC.mailComposeDelegate = context.coordinator
+            mailVC.setToRecipients(recipients)
+            mailVC.setSubject(subject)
+            mailVC.setMessageBody(messageBody, isHTML: false)
+            if let data = attachmentData {
+                mailVC.addAttachmentData(data, mimeType: attachmentMimeType, fileName: attachmentFileName)
+            }
+            return mailVC
+        } else {
+            let placeholder = UIViewController()
+            DispatchQueue.main.async {
+                context.coordinator.presentFallbackAlert(on: placeholder)
+            }
+            return placeholder
         }
-        return vc
     }
     
-    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }

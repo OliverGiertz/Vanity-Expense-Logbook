@@ -12,13 +12,20 @@ class CoreDataBackupCoordinator {
     /// Exportiert CoreData-Store in eine Datei
     func exportStore(to url: URL, completion: @escaping (Bool, String?) -> Void) {
         // Ensure that the CoreData context is saved first
-        do {
+        var saveError: Error?
+        context.performAndWait {
             if context.hasChanges {
-                try context.save()
+                do {
+                    try context.save()
+                } catch {
+                    saveError = error
+                }
             }
-        } catch {
-            ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Speichern des Kontexts vor dem Export")
-            completion(false, "Fehler beim Vorbereiten der Datenbank: \(error.localizedDescription)")
+        }
+        
+        if let saveError = saveError {
+            ErrorLogger.shared.log(error: saveError, additionalInfo: "Fehler beim Speichern des Kontexts vor dem Export")
+            completion(false, "Fehler beim Vorbereiten der Datenbank: \(saveError.localizedDescription)")
             return
         }
         

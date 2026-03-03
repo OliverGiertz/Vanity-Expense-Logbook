@@ -1,0 +1,10 @@
+# fastlane/Snapfile
+devices([
+  "iPhone 17"
+])
+
+languages(["de-DE"])
+scheme("CamperLogBook")
+number_of_retries(1)
+stop_after_first_error(false)
+clear_previous_screenshots(true)

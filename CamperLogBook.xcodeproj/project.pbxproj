@@ -7,21 +7,7 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
-		A79EA8772D58A059001C1D0B /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A79EA8592D58A057001C1D0B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A79EA8602D58A057001C1D0B;
-			remoteInfo = CamperLogBook;
-		};
 		A79EA8812D58A059001C1D0B /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A79EA8592D58A057001C1D0B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A79EA8602D58A057001C1D0B;
-			remoteInfo = CamperLogBook;
-		};
-		A7BD03FD2EA2ADD10082C80A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A79EA8592D58A057001C1D0B /* Project object */;
 			proxyType = 1;
@@ -31,10 +17,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A77C7A052EAE7126003A0838 /* Screenshots.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Screenshots.xctestplan; sourceTree = "<group>"; };
 		A79EA8612D58A057001C1D0B /* CamperLogBook.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CamperLogBook.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A79EA8762D58A059001C1D0B /* CamperLogBookTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CamperLogBookTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CamperLogBookUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		A7BD03F72EA2ADD10082C80A /* CamperLogBookUITestsFastlane.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CamperLogBookUITestsFastlane.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -56,11 +41,6 @@
 			path = CamperLogBook;
 			sourceTree = "<group>";
 		};
-		A79EA8792D58A059001C1D0B /* CamperLogBookTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CamperLogBookTests;
-			sourceTree = "<group>";
-		};
 		A79EA8832D58A059001C1D0B /* CamperLogBookUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CamperLogBookUITests;
@@ -76,21 +56,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A79EA8732D58A059001C1D0B /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		A79EA87D2D58A059001C1D0B /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A7BD03F42EA2ADD10082C80A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -103,8 +69,8 @@
 		A79EA8582D58A057001C1D0B = {
 			isa = PBXGroup;
 			children = (
+				A77C7A052EAE7126003A0838 /* Screenshots.xctestplan */,
 				A79EA8632D58A057001C1D0B /* CamperLogBook */,
-				A79EA8792D58A059001C1D0B /* CamperLogBookTests */,
 				A79EA8832D58A059001C1D0B /* CamperLogBookUITests */,
 				A79EA8622D58A057001C1D0B /* Products */,
 			);
@@ -114,9 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				A79EA8612D58A057001C1D0B /* CamperLogBook.app */,
-				A79EA8762D58A059001C1D0B /* CamperLogBookTests.xctest */,
 				A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */,
-				A7BD03F72EA2ADD10082C80A /* CamperLogBookUITestsFastlane.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -146,29 +110,6 @@
 			productReference = A79EA8612D58A057001C1D0B /* CamperLogBook.app */;
 			productType = "com.apple.product-type.application";
 		};
-		A79EA8752D58A059001C1D0B /* CamperLogBookTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = A79EA88D2D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookTests" */;
-			buildPhases = (
-				A79EA8722D58A059001C1D0B /* Sources */,
-				A79EA8732D58A059001C1D0B /* Frameworks */,
-				A79EA8742D58A059001C1D0B /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				A79EA8782D58A059001C1D0B /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				A79EA8792D58A059001C1D0B /* CamperLogBookTests */,
-			);
-			name = CamperLogBookTests;
-			packageProductDependencies = (
-			);
-			productName = CamperLogBookTests;
-			productReference = A79EA8762D58A059001C1D0B /* CamperLogBookTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 		A79EA87F2D58A059001C1D0B /* CamperLogBookUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A79EA8902D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookUITests" */;
@@ -192,26 +133,6 @@
 			productReference = A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		A7BD03F62EA2ADD10082C80A /* CamperLogBookUITestsFastlane */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = A7BD04012EA2ADD10082C80A /* Build configuration list for PBXNativeTarget "CamperLogBookUITestsFastlane" */;
-			buildPhases = (
-				A7BD03F32EA2ADD10082C80A /* Sources */,
-				A7BD03F42EA2ADD10082C80A /* Frameworks */,
-				A7BD03F52EA2ADD10082C80A /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				A7BD03FE2EA2ADD10082C80A /* PBXTargetDependency */,
-			);
-			name = CamperLogBookUITestsFastlane;
-			packageProductDependencies = (
-			);
-			productName = CamperLogBookUITestsFastlane;
-			productReference = A7BD03F72EA2ADD10082C80A /* CamperLogBookUITestsFastlane.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -220,21 +141,13 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2600;
-				LastUpgradeCheck = 1620;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					A79EA8602D58A057001C1D0B = {
 						CreatedOnToolsVersion = 16.2;
 					};
-					A79EA8752D58A059001C1D0B = {
-						CreatedOnToolsVersion = 16.2;
-						TestTargetID = A79EA8602D58A057001C1D0B;
-					};
 					A79EA87F2D58A059001C1D0B = {
 						CreatedOnToolsVersion = 16.2;
-						TestTargetID = A79EA8602D58A057001C1D0B;
-					};
-					A7BD03F62EA2ADD10082C80A = {
-						CreatedOnToolsVersion = 26.0.1;
 						TestTargetID = A79EA8602D58A057001C1D0B;
 					};
 				};
@@ -254,9 +167,7 @@
 			projectRoot = "";
 			targets = (
 				A79EA8602D58A057001C1D0B /* CamperLogBook */,
-				A79EA8752D58A059001C1D0B /* CamperLogBookTests */,
 				A79EA87F2D58A059001C1D0B /* CamperLogBookUITests */,
-				A7BD03F62EA2ADD10082C80A /* CamperLogBookUITestsFastlane */,
 			);
 		};
 /* End PBXProject section */
@@ -269,21 +180,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A79EA8742D58A059001C1D0B /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		A79EA87E2D58A059001C1D0B /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A7BD03F52EA2ADD10082C80A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -300,21 +197,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A79EA8722D58A059001C1D0B /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		A79EA87C2D58A059001C1D0B /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A7BD03F32EA2ADD10082C80A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -324,20 +207,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		A79EA8782D58A059001C1D0B /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
-			targetProxy = A79EA8772D58A059001C1D0B /* PBXContainerItemProxy */;
-		};
 		A79EA8822D58A059001C1D0B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
 			targetProxy = A79EA8812D58A059001C1D0B /* PBXContainerItemProxy */;
-		};
-		A7BD03FE2EA2ADD10082C80A /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
-			targetProxy = A7BD03FD2EA2ADD10082C80A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -377,6 +250,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = T5A3ZR4938;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -401,6 +275,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -441,6 +316,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = T5A3ZR4938;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -458,6 +334,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -472,10 +349,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 25.03.2;
 				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
-				DEVELOPMENT_TEAM = T5A3ZR4938;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CamperLogBook/Info.plist;
+				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = de.vanityontour.camperlogbook.autobackup;
 				INFOPLIST_KEY_CFBundleDisplayName = "Vanity Expense Logbook";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Diese App benötigt Ihren Standort, um Ihre Einträge korrekt zu verorten.";
@@ -488,7 +365,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-                MARKETING_VERSION = 2.3.2;
+				MARKETING_VERSION = 2.3.3;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -506,10 +383,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 25.03.2;
 				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
-				DEVELOPMENT_TEAM = T5A3ZR4938;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CamperLogBook/Info.plist;
+				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = de.vanityontour.camperlogbook.autobackup;
 				INFOPLIST_KEY_CFBundleDisplayName = "Vanity Expense Logbook";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Diese App benötigt Ihren Standort, um Ihre Einträge korrekt zu verorten.";
@@ -522,7 +399,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-                MARKETING_VERSION = 2.3.2;
+				MARKETING_VERSION = 2.3.3;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -531,50 +408,11 @@
 			};
 			name = Release;
 		};
-		A79EA88E2D58A059001C1D0B /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T5A3ZR4938;
-                GENERATE_INFOPLIST_FILE = YES;
-                IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CamperLogBook.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CamperLogBook";
-			};
-			name = Debug;
-		};
-		A79EA88F2D58A059001C1D0B /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T5A3ZR4938;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CamperLogBook.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CamperLogBook";
-			};
-			name = Release;
-		};
 		A79EA8912D58A059001C1D0B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T5A3ZR4938;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookUITests;
@@ -591,56 +429,11 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T5A3ZR4938;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = CamperLogBook;
-			};
-			name = Release;
-		};
-		A7BD03FF2EA2ADD10082C80A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T5A3ZR4938;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookUITestsFastlane;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = CamperLogBook;
-			};
-			name = Debug;
-		};
-		A7BD04002EA2ADD10082C80A /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T5A3ZR4938;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookUITestsFastlane;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = CamperLogBook;
@@ -668,29 +461,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A79EA88D2D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A79EA88E2D58A059001C1D0B /* Debug */,
-				A79EA88F2D58A059001C1D0B /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		A79EA8902D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A79EA8912D58A059001C1D0B /* Debug */,
 				A79EA8922D58A059001C1D0B /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		A7BD04012EA2ADD10082C80A /* Build configuration list for PBXNativeTarget "CamperLogBookUITestsFastlane" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A7BD03FF2EA2ADD10082C80A /* Debug */,
-				A7BD04002EA2ADD10082C80A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

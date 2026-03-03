@@ -22,7 +22,7 @@ struct BackupRestoreView: View {
     @Environment(\.dismiss) var dismiss
 
     // Verwende jetzt den CloudBackupManager
-    private let backupManager = CloudBackupManager.shared
+    @StateObject private var backupManager = CloudBackupManager.shared
 
     @State private var showBackupConfirmation = false
     @State private var showRestoreConfirmation = false

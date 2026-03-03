@@ -1,0 +1,18 @@
+# fastlane/Fastfile
+default_platform(:ios)
+
+platform :ios do
+  desc "Nur iPhone-Screenshots via Snapshot"
+  lane :screenshots do
+    snapshot(
+      scheme: "CamperLogBook",
+      project: "CamperLogBook.xcodeproj",
+      reinstall_app: true,              # saubere App-Session für reproduzierbare Bilder
+      skip_open_summary: true,
+      clear_previous_screenshots: true,
+      result_bundle: true,
+      testplan: "Screenshots",
+      concurrent_simulators: false
+    )
+  end
+end
