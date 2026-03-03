@@ -4,7 +4,8 @@ import SwiftUI
 struct CamperLogBookApp: App {
     let persistenceController = PersistenceController.shared
     @StateObject var locationManager = LocationManager()
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     // App-Delegate hinzufügen
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
@@ -49,9 +50,15 @@ struct CamperLogBookApp: App {
                 .environmentObject(locationManager)
                 .environment(\.isDebugMode, isDebugModeEnabled)
                 .onAppear {
-                    // Verbinde CloudBackupManager mit dem CoreData-Kontext
-                    CloudBackupManager.shared.connect(to: persistenceController.container.viewContext)
+                    let ctx = persistenceController.container.viewContext
+                    CloudBackupManager.shared.connect(to: ctx)
+                    LocalBackupManager.shared.connect(to: ctx)
                 }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                LocalBackupManager.shared.performBackupIfDue()
+            }
         }
     }
 }

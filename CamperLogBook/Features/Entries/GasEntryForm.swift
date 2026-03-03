@@ -176,7 +176,7 @@ struct GasEntryForm: View {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
             newEntry.receiptType = "image"
         }
-        let fetchRequest = GasEntry.fetchRequest() as! NSFetchRequest<GasEntry>
+        let fetchRequest: NSFetchRequest<GasEntry> = NSFetchRequest(entityName: "GasEntry")
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         fetchRequest.fetchOffset = 1
         fetchRequest.fetchLimit = 1

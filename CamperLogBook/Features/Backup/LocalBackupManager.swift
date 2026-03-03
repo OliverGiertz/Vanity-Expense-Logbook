@@ -242,9 +242,11 @@ class LocalBackupManager: ObservableObject {
                         try FileManager.default.zipItem(at: backupFolderURL, to: zipURL)
                         print("ZIP-Archiv erfolgreich erstellt.")
                         
-                        // Schritt 6: Lösche testweise nur das temporäre Verzeichnis, das kopierte Verzeichnis bleibt bestehen
+                        // Schritt 6: Temporäres Verzeichnis und das kopierte Backup-Verzeichnis löschen
                         try FileManager.default.removeItem(at: tempDirURL)
                         print("Temporäres Verzeichnis gelöscht: \(tempDirURL.path)")
+                        try FileManager.default.removeItem(at: backupFolderURL)
+                        print("Backup-Verzeichnis (unkomprimiert) gelöscht: \(backupFolderURL.path)")
                         
                         DispatchQueue.main.async {
                             self.backupProgress = 1.0
@@ -569,21 +571,40 @@ class LocalBackupManager: ObservableObject {
     }
     
     // MARK: - Automatische Backups
-    
+
     func enableAutomaticBackups() {
         UserDefaults.standard.set(true, forKey: "automaticBackupsEnabled")
         scheduleNextAutomaticBackup()
     }
-    
+
     func disableAutomaticBackups() {
         UserDefaults.standard.set(false, forKey: "automaticBackupsEnabled")
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["autoBackupReminder"])
     }
-    
+
     var isAutomaticBackupEnabled: Bool {
         UserDefaults.standard.bool(forKey: "automaticBackupsEnabled")
     }
-    
+
+    /// Führt ein automatisches Backup durch, wenn es fällig ist (> 7 Tage seit letztem Auto-Backup).
+    /// Wird beim App-Start / Wechsel in den Vordergrund aufgerufen.
+    func performBackupIfDue() {
+        guard isAutomaticBackupEnabled, coreDataCoordinator != nil else { return }
+        guard !isBackupInProgress else { return }
+
+        let lastAutoBackup = UserDefaults.standard.object(forKey: "lastAutoBackupDate") as? Date
+        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+
+        guard lastAutoBackup == nil || lastAutoBackup! < sevenDaysAgo else { return }
+
+        createBackup { success, _ in
+            if success {
+                UserDefaults.standard.set(Date(), forKey: "lastAutoBackupDate")
+                print("Automatisches lokales Backup erfolgreich.")
+            }
+        }
+    }
+
     private func scheduleNextAutomaticBackup() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if granted {

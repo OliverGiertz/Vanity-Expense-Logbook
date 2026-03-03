@@ -312,7 +312,7 @@ struct CSVHelper {
         }
         
         if types.contains(where: { $0 == .fuel }) {
-            let request: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+            let request: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
             if let fuelEntries = try? context.fetch(request) {
                 for entry in fuelEntries {
                     var row: [String] = []
@@ -338,7 +338,7 @@ struct CSVHelper {
         }
         
         if types.contains(where: { $0 == .gas }) {
-            let request: NSFetchRequest<GasEntry> = GasEntry.fetchRequest() as! NSFetchRequest<GasEntry>
+            let request: NSFetchRequest<GasEntry> = NSFetchRequest(entityName: "GasEntry")
             if let gasEntries = try? context.fetch(request) {
                 for entry in gasEntries {
                     var row: [String] = []
@@ -364,7 +364,7 @@ struct CSVHelper {
         }
         
         if types.contains(where: { $0 == .other }) {
-            let request: NSFetchRequest<OtherEntry> = OtherEntry.fetchRequest() as! NSFetchRequest<OtherEntry>
+            let request: NSFetchRequest<OtherEntry> = NSFetchRequest(entityName: "OtherEntry")
             if let otherEntries = try? context.fetch(request) {
                 for entry in otherEntries {
                     var row: [String] = []
@@ -398,9 +398,9 @@ struct CSVHelper {
         let container = PersistenceController.shared.container
         let bgContext = container.newBackgroundContext()
         bgContext.perform {
-            let fuelRequest: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
-            let gasRequest: NSFetchRequest<GasEntry> = GasEntry.fetchRequest() as! NSFetchRequest<GasEntry>
-            let otherRequest: NSFetchRequest<OtherEntry> = OtherEntry.fetchRequest() as! NSFetchRequest<OtherEntry>
+            let fuelRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
+            let gasRequest: NSFetchRequest<GasEntry> = NSFetchRequest(entityName: "GasEntry")
+            let otherRequest: NSFetchRequest<OtherEntry> = NSFetchRequest(entityName: "OtherEntry")
             do {
                 let fuelEntries = try bgContext.fetch(fuelRequest)
                 let gasEntries = try bgContext.fetch(gasRequest)

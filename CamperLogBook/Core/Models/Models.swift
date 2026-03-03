@@ -26,7 +26,7 @@ public class FuelEntry: NSManagedObject, Identifiable {
 
 extension FuelEntry {
     static func fetchAll() -> NSFetchRequest<FuelEntry> {
-        let request: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+        let request: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         return request
     }
@@ -65,7 +65,7 @@ public class GasEntry: NSManagedObject, Identifiable {
 
 extension GasEntry {
     static func fetchAll() -> NSFetchRequest<GasEntry> {
-        let request: NSFetchRequest<GasEntry> = GasEntry.fetchRequest() as! NSFetchRequest<GasEntry>
+        let request: NSFetchRequest<GasEntry> = NSFetchRequest(entityName: "GasEntry")
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         return request
     }
@@ -105,7 +105,7 @@ public class ServiceEntry: NSManagedObject, Identifiable {
 
 extension ServiceEntry {
     static func fetchAll() -> NSFetchRequest<ServiceEntry> {
-        let request: NSFetchRequest<ServiceEntry> = ServiceEntry.fetchRequest() as! NSFetchRequest<ServiceEntry>
+        let request: NSFetchRequest<ServiceEntry> = NSFetchRequest(entityName: "ServiceEntry")
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         return request
     }
@@ -145,7 +145,7 @@ public class OtherEntry: NSManagedObject, Identifiable {
 
 extension OtherEntry {
     static func fetchAll() -> NSFetchRequest<OtherEntry> {
-        let request: NSFetchRequest<OtherEntry> = OtherEntry.fetchRequest() as! NSFetchRequest<OtherEntry>
+        let request: NSFetchRequest<OtherEntry> = NSFetchRequest(entityName: "OtherEntry")
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         return request
     }
@@ -174,7 +174,7 @@ public class VehicleProfile: NSManagedObject, Identifiable {
 
 extension VehicleProfile {
     static func fetchRequestProfile() -> NSFetchRequest<VehicleProfile> {
-        let request: NSFetchRequest<VehicleProfile> = VehicleProfile.fetchRequest() as! NSFetchRequest<VehicleProfile>
+        let request: NSFetchRequest<VehicleProfile> = NSFetchRequest(entityName: "VehicleProfile")
         return request
     }
 }

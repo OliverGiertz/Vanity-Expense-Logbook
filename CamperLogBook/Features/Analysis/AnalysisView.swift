@@ -121,7 +121,7 @@ struct AnalysisView: View {
         displayFormatter.dateFormat = "MMM yyyy"   // z. B. "Jan 2023"
         
         // FuelEntry (Tankbelege)
-        let fuelRequest = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+        let fuelRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         fuelRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as NSDate, endDate as NSDate)
         if let fuelEntries = try? viewContext.fetch(fuelRequest) {
             for entry in fuelEntries {
@@ -131,7 +131,7 @@ struct AnalysisView: View {
         }
         
         // GasEntry (Gaskosten)
-        let gasRequest = GasEntry.fetchRequest() as! NSFetchRequest<GasEntry>
+        let gasRequest: NSFetchRequest<GasEntry> = NSFetchRequest(entityName: "GasEntry")
         gasRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as NSDate, endDate as NSDate)
         if let gasEntries = try? viewContext.fetch(gasRequest) {
             for entry in gasEntries {
@@ -142,7 +142,7 @@ struct AnalysisView: View {
         }
         
         // ServiceEntry (Ver- und Entsorgung)
-        let serviceRequest = ServiceEntry.fetchRequest() as! NSFetchRequest<ServiceEntry>
+        let serviceRequest: NSFetchRequest<ServiceEntry> = NSFetchRequest(entityName: "ServiceEntry")
         serviceRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as NSDate, endDate as NSDate)
         if let serviceEntries = try? viewContext.fetch(serviceRequest) {
             for entry in serviceEntries {
@@ -152,7 +152,7 @@ struct AnalysisView: View {
         }
         
         // OtherEntry (Sonstige Kosten)
-        let otherRequest = OtherEntry.fetchRequest() as! NSFetchRequest<OtherEntry>
+        let otherRequest: NSFetchRequest<OtherEntry> = NSFetchRequest(entityName: "OtherEntry")
         otherRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as NSDate, endDate as NSDate)
         if let otherEntries = try? viewContext.fetch(otherRequest) {
             for entry in otherEntries {

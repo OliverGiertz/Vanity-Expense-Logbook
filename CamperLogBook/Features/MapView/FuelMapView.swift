@@ -96,7 +96,7 @@ struct FuelMapView: View {
         let now = Date()
         let predicate = NSPredicate(format: "date >= %@ AND date <= %@ AND latitude != 0 AND longitude != 0",
                                     startDate as NSDate, now as NSDate)
-        let request: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+        let request: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         request.predicate = predicate
         do {
             return try viewContext.count(for: request)
@@ -123,7 +123,7 @@ struct FuelMapView: View {
         let now = Date()
         let predicate = NSPredicate(format: "date >= %@ AND date <= %@ AND latitude != 0 AND longitude != 0",
                                     startDate as NSDate, now as NSDate)
-        let request: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+        let request: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         request.predicate = predicate
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         

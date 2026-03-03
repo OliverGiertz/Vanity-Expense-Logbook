@@ -7,5 +7,10 @@
 	<!-- Export Compliance: Set to false if app uses only exempt encryption (e.g., ATS/TLS, authentication, hash/signatures) -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Background Tasks: Required for BGTaskScheduler to work -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>de.vanityontour.camperlogbook.autobackup</string>
+	</array>
 </dict>
 </plist>

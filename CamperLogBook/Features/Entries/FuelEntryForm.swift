@@ -179,7 +179,7 @@ struct FuelEntryForm: View {
             return
         }
         
-        let fetchRequest = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+        let fetchRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         fetchRequest.fetchLimit = 1
         
@@ -246,7 +246,7 @@ struct FuelEntryForm: View {
             newEntry.receiptType = "image"
         }
         
-        let fetchRequest = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+        let fetchRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         fetchRequest.fetchOffset = 1
         fetchRequest.fetchLimit = 1
@@ -309,7 +309,7 @@ struct FuelEntryForm: View {
 
     private func calculateOverallAverageConsumption() -> Double? {
         // Durchschnittsverbrauch über alle Diesel-Belege (inkl. des gerade gespeicherten)
-        let request = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+        let request: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         request.predicate = NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
         do {
             let entries = try viewContext.fetch(request)
@@ -331,7 +331,7 @@ struct FuelEntryForm: View {
     private func calculateTrendText(recentConsumption: Double?) -> String? {
         guard let recent = recentConsumption else { return nil }
         // Ermittle den Verbrauch des vorherigen Tankvorgangs (ohne den neuen Eintrag)
-        let req = FuelEntry.fetchRequest() as! NSFetchRequest<FuelEntry>
+        let req: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         req.predicate = NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
         req.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         req.fetchOffset = 1 // neuesten (gerade gespeicherten) Eintrag überspringen
@@ -359,7 +359,7 @@ struct FuelEntryForm: View {
 
     private func calculateRangeText(usingOverall avgOrRecent: Double?) -> String? {
         // Reichweitenschätzung basierend auf Tankvolumen im Profil und Durchschnitt
-        let req: NSFetchRequest<VehicleProfile> = VehicleProfile.fetchRequest() as! NSFetchRequest<VehicleProfile>
+        let req: NSFetchRequest<VehicleProfile> = NSFetchRequest(entityName: "VehicleProfile")
         do {
             let profiles = try viewContext.fetch(req)
             guard let profile = profiles.first else { return nil }
