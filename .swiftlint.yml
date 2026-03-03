@@ -1,0 +1,20 @@
+disabled_rules:
+  - trailing_whitespace
+  - line_length
+
+opt_in_rules:
+  - force_unwrap
+  - force_cast
+  - cyclomatic_complexity
+
+excluded:
+  - vendor/
+  - fastlane/
+  - Pods/
+
+# Xcode Build Phase Script (manuell in Xcode hinzufügen unter Target > Build Phases > + > New Run Script Phase):
+# if which swiftlint > /dev/null; then
+#   swiftlint
+# else
+#   echo "warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint"
+# fi
