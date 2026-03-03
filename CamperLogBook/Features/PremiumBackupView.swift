@@ -32,31 +32,31 @@ struct PremiumBackupView: View {
                     
                     // Feature List
                     VStack(alignment: .leading, spacing: 16) {
-                        FeatureRow(
+                        BackupFeatureRow(
                             icon: "checkmark.icloud.fill",
                             title: "Automatische Backups",
                             description: "Deine Daten werden sicher in iCloud gespeichert"
                         )
-                        
+
                         Divider()
-                        
-                        FeatureRow(
+
+                        BackupFeatureRow(
                             icon: "arrow.clockwise",
                             title: "Einfache Wiederherstellung",
                             description: "Stelle deine Daten auf jedem Gerät wieder her"
                         )
-                        
+
                         Divider()
-                        
-                        FeatureRow(
+
+                        BackupFeatureRow(
                             icon: "lock.shield.fill",
                             title: "End-to-End verschlüsselt",
                             description: "Deine Daten sind durch iCloud geschützt"
                         )
-                        
+
                         Divider()
-                        
-                        FeatureRow(
+
+                        BackupFeatureRow(
                             icon: "infinity",
                             title: "Einmaliger Kauf",
                             description: "Kein Abo, keine versteckten Kosten"
@@ -204,7 +204,7 @@ struct PremiumBackupView: View {
     }
 }
 
-struct FeatureRow: View {
+struct BackupFeatureRow: View {
     let icon: String
     let title: String
     let description: String
