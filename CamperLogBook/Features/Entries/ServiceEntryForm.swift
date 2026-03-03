@@ -1,6 +1,5 @@
 import SwiftUI
 import CoreData
-import PhotosUI
 import CoreLocation
 
 struct ServiceEntryForm: View {
@@ -13,30 +12,22 @@ struct ServiceEntryForm: View {
     @State private var isDisposal: Bool = false
     @State private var cost: String = ""
     @State private var receiptImage: UIImage?
-    @State private var photoPickerItem: PhotosPickerItem?
-    @State private var pdfData: Data? = nil  // Falls benötigt
-    
-    // Neuer State für Frischwasser-Eingabe
+    @State private var pdfData: Data? = nil
+
     @State private var freshWaterText: String = ""
-    
-    // Neue States für manuellen Standort
+
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
     @State private var manualAddress: String = ""
     @State private var showLocationPicker: Bool = false
-    
-    // Zustände für Beleg-Auswahl
+
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
-    
-    // Fehlerhandling
+
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
 
-    // Toggle für Standort speichern (default: aktiv)
     @State private var saveLocation: Bool = true
-
-    // Erfolgsmeldung (Toast)
     @State private var showSuccessToast: Bool = false
 
     var body: some View {
@@ -63,46 +54,19 @@ struct ServiceEntryForm: View {
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
-                Section(header: Text("Standort")) {
-                    Toggle("Standort speichern", isOn: $saveLocation)
-                    if saveLocation {
-                        if !manualAddress.isEmpty {
-                            Text("Manuell ausgewählt: \(manualAddress)")
-                        } else if let _ = locationManager.lastLocation {
-                            Text("Automatisch ermittelt: \(locationManager.address)")
-                        } else if let manualLocation = selectedLocation {
-                            Text("Manuell ausgewählt: Lat: \(manualLocation.latitude), Lon: \(manualLocation.longitude)")
-                        } else {
-                            Text("Kein Standort ermittelt")
-                        }
-                        Button("Standort manuell auswählen") {
-                            showLocationPicker = true
-                        }
-                    } else {
-                        Text("Standort wird nicht gespeichert")
-                    }
-                }
-                Section(header: Text("Beleg (Bild/PDF)")) {
-                    if let image = receiptImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
-                    }
-                    PhotosPicker(selection: $photoPickerItem, matching: .images, photoLibrary: .shared()) {
-                        Text("Beleg auswählen")
-                    }
-                    .onChange(of: photoPickerItem) { _, _ in
-                        if let newItem = photoPickerItem {
-                            Task {
-                                if let data = try? await newItem.loadTransferable(type: Data.self),
-                                   let uiImage = UIImage(data: data) {
-                                    receiptImage = uiImage
-                                }
-                            }
-                        }
-                    }
-                }
+                LocationSection(
+                    saveLocation: $saveLocation,
+                    manualAddress: manualAddress,
+                    locationManager: locationManager,
+                    manualLocation: selectedLocation,
+                    showPickerAction: { showLocationPicker = true }
+                )
+                ReceiptPickerSection(
+                    receiptImage: $receiptImage,
+                    pdfData: $pdfData,
+                    showingReceiptOptions: $showingReceiptOptions,
+                    receiptSource: $receiptSource
+                )
                 Button("Speichern") {
                     saveEntry()
                 }
@@ -114,34 +78,10 @@ struct ServiceEntryForm: View {
                 LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
             }
         }
-        .sheet(isPresented: $showMailView) {
-            if let url = ErrorLogger.shared.getLogFileURL(),
-               let logData = try? Data(contentsOf: url) {
-                MailComposeView(
-                    recipients: ["logfile@vanityontour.de"],
-                    subject: "Fehlerlog",
-                    messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
-                    attachmentData: logData,
-                    attachmentMimeType: "text/plain",
-                    attachmentFileName: "error.log"
-                )
-            } else {
-                Text("Logdatei nicht verfügbar.")
-            }
-        }
         .sheet(item: $receiptSource) { _ in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
-        .alert(isPresented: $showErrorAlert) {
-                Alert(
-                    title: Text("Fehler"),
-                    message: Text(errorAlertMessage),
-                    primaryButton: .default(Text("OK")),
-                    secondaryButton: .default(Text("Log senden"), action: {
-                        showMailView = true
-                    })
-                )
-        }
+        .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
         .toast(
             isPresented: $showSuccessToast,
             title: "Eintrag gespeichert",
@@ -151,14 +91,16 @@ struct ServiceEntryForm: View {
             alignment: .bottom
         )
     }
-    
+
     private func saveEntry() {
         let costText = cost.replacingOccurrences(of: ",", with: ".")
         guard let costValue = Double(costText) else {
             ErrorLogger.shared.log(message: "Kostenkonvertierung fehlgeschlagen in ServiceEntryForm")
+            errorAlertMessage = "Kosten ungültig."
+            showErrorAlert = true
             return
         }
-        
+
         let chosenLocation: CLLocation
         if saveLocation {
             if let autoLocation = locationManager.lastLocation {
@@ -188,6 +130,8 @@ struct ServiceEntryForm: View {
         }
         if let image = receiptImage {
             newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+        } else if let pdf = pdfData {
+            newEntry.receiptData = pdf
         }
         do {
             try viewContext.save()
@@ -197,6 +141,7 @@ struct ServiceEntryForm: View {
             }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern ServiceEntry in ServiceEntryForm")
+            errorAlertMessage = "Fehler beim Speichern: \(error.localizedDescription)"
             showErrorAlert = true
         }
     }

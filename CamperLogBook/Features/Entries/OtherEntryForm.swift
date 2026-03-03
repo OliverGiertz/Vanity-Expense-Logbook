@@ -14,12 +14,10 @@ struct OtherEntryForm: View {
     @State private var cost: String = ""
     @State private var receiptImage: UIImage?
     @State private var pdfData: Data?
-    
-    // Zustände für die Beleg-Auswahl
+
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
 
-    // FetchRequest zur Abfrage der vorhandenen Kategorien (ExpenseCategory)
     @FetchRequest(
         entity: ExpenseCategory.entity(),
         sortDescriptors: [NSSortDescriptor(key: "name", ascending: true)]
@@ -29,13 +27,10 @@ struct OtherEntryForm: View {
     enum Field: Hashable {
         case cost, details, customCategory
     }
-    
-    // Fehler-Handling States
+
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
-
-    // Erfolgsmeldung (Toast)
     @State private var showSuccessToast: Bool = false
 
     var body: some View {
@@ -44,7 +39,7 @@ struct OtherEntryForm: View {
                 Section(header: Text("Datum")) {
                     DatePicker("Datum", selection: $date, displayedComponents: .date)
                 }
-                
+
                 Section(header: Text("Kategorie")) {
                     Picker("Kategorie", selection: $selectedCategory) {
                         ForEach(categoriesFetched, id: \.self) { cat in
@@ -62,14 +57,14 @@ struct OtherEntryForm: View {
                             .onSubmit { focusedField = nil }
                     }
                 }
-                
+
                 Section(header: Text("Details")) {
                     TextField("Zusätzliche Informationen", text: $details)
                         .focused($focusedField, equals: .details)
                         .submitLabel(.done)
                         .onSubmit { focusedField = nil }
                 }
-                
+
                 Section(header: Text("Kosten")) {
                     TextField("Kosten", text: $cost)
                         .keyboardType(.decimalPad)
@@ -77,30 +72,14 @@ struct OtherEntryForm: View {
                         .submitLabel(.done)
                         .onSubmit { focusedField = nil }
                 }
-                
-                Section(header: Text("Beleg (Bild/PDF)")) {
-                    if let image = receiptImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
-                    } else if pdfData != nil {
-                        Image(systemName: "doc.richtext")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
-                    }
-                    Button("Beleg auswählen") {
-                        showingReceiptOptions = true
-                    }
-                    .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
-                        Button("Aus Fotos wählen") { receiptSource = .photo }
-                        Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
-                        Button("Kamera Scannen") { receiptSource = .scanner }
-                        Button("Abbrechen", role: .cancel) { }
-                    }
-                }
-                
+
+                ReceiptPickerSection(
+                    receiptImage: $receiptImage,
+                    pdfData: $pdfData,
+                    showingReceiptOptions: $showingReceiptOptions,
+                    receiptSource: $receiptSource
+                )
+
                 Button("Speichern") { saveEntry() }
             }
             .toolbar {
@@ -119,21 +98,14 @@ struct OtherEntryForm: View {
         .sheet(item: $receiptSource) { _ in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
-        .alert(isPresented: $showErrorAlert) {
-            Alert(title: Text("Fehler"), message: Text(errorAlertMessage), primaryButton: .default(Text("OK")), secondaryButton: .default(Text("Log senden"), action: { showMailView = true }))
-        }
-        .sheet(isPresented: $showMailView) {
-            if let url = ErrorLogger.shared.getLogFileURL(), let logData = try? Data(contentsOf: url) {
-                MailComposeView(recipients: ["logfile@vanityontour.de"], subject: "Fehlerlog", messageBody: "Bitte prüfe den beigefügten Fehlerlog.", attachmentData: logData, attachmentMimeType: "text/plain", attachmentFileName: "error.log")
-            } else { Text("Logdatei nicht verfügbar.") }
-        }
+        .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
         .toast(isPresented: $showSuccessToast, title: "Eintrag gespeichert", subtitle: nil, systemImage: "checkmark.circle.fill", duration: 2.0, alignment: .bottom)
     }
-    
+
     private func saveEntry() {
         let costText = cost.replacingOccurrences(of: ",", with: ".")
         guard let costValue = Double(costText) else { return }
-        
+
         let categoryToSave: String
         if selectedCategory == "Neu" {
             let trimmed = customCategory.trimmingCharacters(in: .whitespaces)
@@ -146,7 +118,7 @@ struct OtherEntryForm: View {
         } else {
             categoryToSave = selectedCategory
         }
-        
+
         let newEntry = OtherEntry(context: viewContext)
         newEntry.id = UUID()
         newEntry.date = date
@@ -160,7 +132,7 @@ struct OtherEntryForm: View {
             newEntry.receiptData = pdf
             newEntry.receiptType = "pdf"
         }
-        
+
         do {
             try viewContext.save()
             clearFields()
@@ -174,7 +146,7 @@ struct OtherEntryForm: View {
             showErrorAlert = true
         }
     }
-    
+
     private func clearFields() {
         date = Date()
         selectedCategory = categoriesFetched.first?.name ?? ""

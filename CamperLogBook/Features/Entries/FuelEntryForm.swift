@@ -1,7 +1,6 @@
 import SwiftUI
 import UIKit
 import CoreData
-import PhotosUI
 import CoreLocation
 
 struct FuelEntryForm: View {
@@ -18,33 +17,25 @@ struct FuelEntryForm: View {
     @State private var totalCost: String = "0,00"
     @State private var receiptImage: UIImage?
     @State private var pdfData: Data?
-    
+
     @State private var kmDifference: Int64?
     @State private var consumptionPer100km: Double?
-    
+
     @State private var errorMessage: String?
-    
-    // Neuer State für manuellen Standort
+
     @State private var selectedLocation: CLLocationCoordinate2D? = nil
     @State private var manualAddress: String = ""
     @State private var showLocationPicker: Bool = false
-    
-    // Zustände für Beleg-Auswahl
+
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
-    
-    // Fehlerhandling
+
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
-    
-    // Loading state
-    @State private var isLoading: Bool = false
-    
-    // Toggle für Standort speichern (default: aktiv)
-    @State private var saveLocation: Bool = true
 
-    // Erfolgsmeldung (Toast)
+    @State private var isLoading: Bool = false
+    @State private var saveLocation: Bool = true
     @State private var showSuccessToast: Bool = false
     @State private var successSubtitle: String = ""
 
@@ -115,33 +106,19 @@ struct FuelEntryForm: View {
                         .onChange(of: costPerLiter) { _, _ in computeTotalCost() }
                     TextField("Gesamtkosten", text: $totalCost).disabled(true)
                 }
-                Section(header: Text("Standort")) {
-                    Toggle("Standort speichern", isOn: $saveLocation)
-                    if saveLocation {
-                        if !manualAddress.isEmpty {
-                            Text("Manuell ausgewählt: \(manualAddress)")
-                        } else if let _ = locationManager.lastLocation {
-                            Text("Automatisch ermittelt: \(locationManager.address)")
-                        } else if let loc = selectedLocation {
-                            Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
-                        } else { Text("Kein Standort ermittelt") }
-                        Button("Standort manuell auswählen") { showLocationPicker = true }
-                    } else { Text("Standort wird nicht gespeichert") }
-                }
-                Section(header: Text("Beleg (Bild/PDF)")) {
-                    if let image = receiptImage {
-                        Image(uiImage: image).resizable().scaledToFit().frame(height: 150)
-                    } else if pdfData != nil {
-                        Image(systemName: "doc.richtext").resizable().scaledToFit().frame(height: 150)
-                    }
-                    Button("Beleg auswählen") { showingReceiptOptions = true }
-                        .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
-                            Button("Aus Fotos wählen") { receiptSource = .photo }
-                            Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
-                            Button("Kamera Scannen") { receiptSource = .scanner }
-                            Button("Abbrechen", role: .cancel) { }
-                        }
-                }
+                LocationSection(
+                    saveLocation: $saveLocation,
+                    manualAddress: manualAddress,
+                    locationManager: locationManager,
+                    manualLocation: selectedLocation,
+                    showPickerAction: { showLocationPicker = true }
+                )
+                ReceiptPickerSection(
+                    receiptImage: $receiptImage,
+                    pdfData: $pdfData,
+                    showingReceiptOptions: $showingReceiptOptions,
+                    receiptSource: $receiptSource
+                )
                 Button(action: { isLoading = true; saveEntry() }) {
                     HStack { Text("Speichern"); if isLoading { Spacer(); ProgressView() } }
                 }
@@ -149,19 +126,18 @@ struct FuelEntryForm: View {
             }
             .navigationTitle("Tankbeleg")
         }
-        .sheet(isPresented: $showLocationPicker) { NavigationView { LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress) } }
-        .sheet(item: $receiptSource) { _ in ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData) }
-        .alert(isPresented: $showErrorAlert) {
-            Alert(title: Text("Fehler"), message: Text(errorAlertMessage), primaryButton: .default(Text("OK")), secondaryButton: .default(Text("Log senden"), action: { showMailView = true }))
+        .sheet(isPresented: $showLocationPicker) {
+            NavigationView {
+                LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
+            }
         }
-        .sheet(isPresented: $showMailView) {
-            if let url = ErrorLogger.shared.getLogFileURL(), let logData = try? Data(contentsOf: url) {
-                MailComposeView(recipients: ["logfile@vanityontour.de"], subject: "Fehlerlog", messageBody: "Bitte prüfe den beigefügten Fehlerlog.", attachmentData: logData, attachmentMimeType: "text/plain", attachmentFileName: "error.log")
-            } else { Text("Logdatei nicht verfügbar.") }
+        .sheet(item: $receiptSource) { _ in
+            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
+        .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
         .toast(isPresented: $showSuccessToast, title: "Eintrag gespeichert", subtitle: successSubtitle, systemImage: "checkmark.circle.fill", duration: 2.4, alignment: .bottom)
     }
-    
+
     private func computeTotalCost() {
         if let litersValue = Double(liters.replacingOccurrences(of: ",", with: ".")),
            let costValue = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")) {
@@ -171,18 +147,18 @@ struct FuelEntryForm: View {
             totalCost = "0,00"
         }
     }
-    
+
     private func updateKmDifference() {
         guard let currentKmValue = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) else {
             kmDifference = nil
             consumptionPer100km = nil
             return
         }
-        
+
         let fetchRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         fetchRequest.fetchLimit = 1
-        
+
         do {
             let previousEntries = try viewContext.fetch(fetchRequest)
             if let previous = previousEntries.first {
@@ -203,12 +179,12 @@ struct FuelEntryForm: View {
             consumptionPer100km = nil
         }
     }
-    
+
     private func saveEntry() {
         errorMessage = nil
         let costText = totalCost.replacingOccurrences(of: ",", with: ".")
         guard let costValue = Double(costText) else { return }
-        
+
         let chosenLocation: CLLocation
         if saveLocation {
             if let autoLocation = locationManager.lastLocation {
@@ -222,7 +198,7 @@ struct FuelEntryForm: View {
         } else {
             chosenLocation = CLLocation(latitude: 0, longitude: 0)
         }
-        
+
         let newEntry = FuelEntry(context: viewContext)
         newEntry.id = UUID()
         newEntry.date = date
@@ -235,8 +211,7 @@ struct FuelEntryForm: View {
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
         newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
-        
-        // Compress and optimize receipt image before saving
+
         if let pdf = pdfData {
             newEntry.receiptData = pdf
             newEntry.receiptType = "pdf"
@@ -245,12 +220,12 @@ struct FuelEntryForm: View {
             newEntry.receiptData = compressedImage.jpegData(compressionQuality: 0.7)
             newEntry.receiptType = "image"
         }
-        
+
         let fetchRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         fetchRequest.fetchOffset = 1
         fetchRequest.fetchLimit = 1
-        
+
         do {
             let previousEntries = try viewContext.fetch(fetchRequest)
             if let previous = previousEntries.first {
@@ -265,12 +240,11 @@ struct FuelEntryForm: View {
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Error fetching previous fuel entry in FuelEntryForm")
         }
-        
+
         do {
             try viewContext.save()
             ErrorLogger.shared.log(message: "Eintrag erfolgreich gespeichert in FuelEntryForm")
 
-            // Kurze, prägnante Info bereitstellen
             let recentText: String? = {
                 if let c = consumptionPer100km, let s = formatDecimal2(c) {
                     return "⌀ seit letztem: \(s) L/100 km"
@@ -295,7 +269,6 @@ struct FuelEntryForm: View {
             clearFields()
             isLoading = false
 
-            // Nach kurzer Bestätigung zurück zur Übersicht
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 dismiss()
             }
@@ -308,7 +281,6 @@ struct FuelEntryForm: View {
     }
 
     private func calculateOverallAverageConsumption() -> Double? {
-        // Durchschnittsverbrauch über alle Diesel-Belege (inkl. des gerade gespeicherten)
         let request: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         request.predicate = NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
         do {
@@ -330,11 +302,10 @@ struct FuelEntryForm: View {
 
     private func calculateTrendText(recentConsumption: Double?) -> String? {
         guard let recent = recentConsumption else { return nil }
-        // Ermittle den Verbrauch des vorherigen Tankvorgangs (ohne den neuen Eintrag)
         let req: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         req.predicate = NSPredicate(format: "isDiesel == %@", NSNumber(value: true))
         req.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
-        req.fetchOffset = 1 // neuesten (gerade gespeicherten) Eintrag überspringen
+        req.fetchOffset = 1
         req.fetchLimit = 2
         do {
             let items = try viewContext.fetch(req)
@@ -358,7 +329,6 @@ struct FuelEntryForm: View {
     }
 
     private func calculateRangeText(usingOverall avgOrRecent: Double?) -> String? {
-        // Reichweitenschätzung basierend auf Tankvolumen im Profil und Durchschnitt
         let req: NSFetchRequest<VehicleProfile> = NSFetchRequest(entityName: "VehicleProfile")
         do {
             let profiles = try viewContext.fetch(req)
@@ -394,7 +364,7 @@ struct FuelEntryForm: View {
     private func formatCurrency2(_ value: Double) -> String? {
         FuelEntryForm.deCurrency2.string(from: NSNumber(value: value))
     }
-    
+
     private func clearFields() {
         date = Date()
         isDiesel = true
