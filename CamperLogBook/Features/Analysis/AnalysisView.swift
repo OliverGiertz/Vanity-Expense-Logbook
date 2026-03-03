@@ -10,16 +10,17 @@ enum ChartType: String, CaseIterable, Identifiable {
 
 struct AnalysisData: Identifiable {
     var id = UUID()
-    var period: String  // z. B. "Jan 2023"
+    var period: String  // z. B. "Jan 2023"
     var cost: Double
-    var type: String    // z. B. "Tankbeleg", "Gaskosten", "Ver-/Entsorgung", "Sonstige"
+    var type: String    // z. B. "Tankbeleg", "Gaskosten", "Ver-/Entsorgung", "Sonstige"
 }
 
 struct AnalysisView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var selectedChartType: ChartType = .bar
     @State private var data: [AnalysisData] = []
-    
+    @State private var isLoading: Bool = false
+
     // Zeitraum-Auswahl: Standard = aktuelles Jahr
     @State private var startDate: Date = {
         let currentYear = Calendar.current.component(.year, from: Date())
@@ -29,10 +30,10 @@ struct AnalysisView: View {
         let currentYear = Calendar.current.component(.year, from: Date())
         return Calendar.current.date(from: DateComponents(year: currentYear, month: 12, day: 31)) ?? Date()
     }()
-    
+
     // Auswahl der Kostentypen; Standard: alle ausgewählt
     @State private var selectedCostTypes: Set<String> = ["Tankbeleg", "Gaskosten", "Ver-/Entsorgung", "Sonstige"]
-    
+
     var body: some View {
         NavigationView {
             VStack {
@@ -42,13 +43,9 @@ struct AnalysisView: View {
                     DatePicker("Bis", selection: $endDate, displayedComponents: .date)
                 }
                 .padding(.horizontal)
-                .onChange(of: startDate) { _ in
-                    loadData()
-                }
-                .onChange(of: endDate) { _ in
-                    loadData()
-                }
-                
+                .onChange(of: startDate) { _ in loadData() }
+                .onChange(of: endDate) { _ in loadData() }
+
                 // Kostentyp-Auswahl
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
@@ -69,7 +66,7 @@ struct AnalysisView: View {
                     .padding(.horizontal)
                 }
                 .padding(.vertical, 5)
-                
+
                 Picker("Diagrammtyp", selection: $selectedChartType) {
                     ForEach(ChartType.allCases) { type in
                         Text(type.rawValue).tag(type)
@@ -77,113 +74,123 @@ struct AnalysisView: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
-                
-                Chart(data.filter { selectedCostTypes.contains($0.type) }) { item in
-                    if selectedChartType == .bar {
-                        BarMark(
-                            x: .value("Monat", item.period),
-                            y: .value("Kosten", item.cost)
-                        )
-                        .foregroundStyle(by: .value("Typ", item.type))
-                        .annotation(position: .top) {
-                            Text("\(Int(ceil(item.cost)))")
-                                .font(.caption)
-                        }
-                    } else {
-                        LineMark(
-                            x: .value("Monat", item.period),
-                            y: .value("Kosten", item.cost)
-                        )
-                        .foregroundStyle(by: .value("Typ", item.type))
-                        .symbol(by: .value("Typ", item.type))
-                        .annotation(position: .top) {
-                            Text("\(Int(ceil(item.cost)))")
-                                .font(.caption)
+
+                if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    Chart(data.filter { selectedCostTypes.contains($0.type) }) { item in
+                        if selectedChartType == .bar {
+                            BarMark(
+                                x: .value("Monat", item.period),
+                                y: .value("Kosten", item.cost)
+                            )
+                            .foregroundStyle(by: .value("Typ", item.type))
+                            .annotation(position: .top) {
+                                Text("\(Int(ceil(item.cost)))")
+                                    .font(.caption)
+                            }
+                        } else {
+                            LineMark(
+                                x: .value("Monat", item.period),
+                                y: .value("Kosten", item.cost)
+                            )
+                            .foregroundStyle(by: .value("Typ", item.type))
+                            .symbol(by: .value("Typ", item.type))
+                            .annotation(position: .top) {
+                                Text("\(Int(ceil(item.cost)))")
+                                    .font(.caption)
+                            }
                         }
                     }
+                    .chartLegend(.visible)
+                    .padding()
                 }
-                .chartLegend(.visible)
-                .padding()
-                
+
                 Spacer()
             }
             .navigationTitle("Auswertung")
-            .onAppear(perform: loadData)
+            .onAppear { loadData() }
         }
     }
-    
+
     private func loadData() {
-        // Gruppierung nach Monat (als Schlüssel)
-        var tempData: [String: [String: Double]] = [:] // [MonatKey: [Typ: Kosten]]
+        isLoading = true
+        let start = startDate
+        let end = endDate
         let groupingFormatter = DateFormatter()
-        groupingFormatter.dateFormat = "yyyy-MM"  // z. B. "2023-01"
+        groupingFormatter.dateFormat = "yyyy-MM"
         let displayFormatter = DateFormatter()
-        displayFormatter.dateFormat = "MMM yyyy"   // z. B. "Jan 2023"
-        
-        // FuelEntry (Tankbelege)
-        let fuelRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
-        fuelRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as NSDate, endDate as NSDate)
-        if let fuelEntries = try? viewContext.fetch(fuelRequest) {
-            for entry in fuelEntries {
-                let key = groupingFormatter.string(from: entry.date)
-                tempData[key, default: [:]]["Tankbeleg"] = (tempData[key]?["Tankbeleg"] ?? 0) + entry.totalCost
-            }
-        }
-        
-        // GasEntry (Gaskosten)
-        let gasRequest: NSFetchRequest<GasEntry> = NSFetchRequest(entityName: "GasEntry")
-        gasRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as NSDate, endDate as NSDate)
-        if let gasEntries = try? viewContext.fetch(gasRequest) {
-            for entry in gasEntries {
-                let key = groupingFormatter.string(from: entry.date)
-                let totalCost = entry.costPerBottle * Double(entry.bottleCount)
-                tempData[key, default: [:]]["Gaskosten"] = (tempData[key]?["Gaskosten"] ?? 0) + totalCost
-            }
-        }
-        
-        // ServiceEntry (Ver- und Entsorgung)
-        let serviceRequest: NSFetchRequest<ServiceEntry> = NSFetchRequest(entityName: "ServiceEntry")
-        serviceRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as NSDate, endDate as NSDate)
-        if let serviceEntries = try? viewContext.fetch(serviceRequest) {
-            for entry in serviceEntries {
-                let key = groupingFormatter.string(from: entry.date)
-                tempData[key, default: [:]]["Ver-/Entsorgung"] = (tempData[key]?["Ver-/Entsorgung"] ?? 0) + entry.cost
-            }
-        }
-        
-        // OtherEntry (Sonstige Kosten)
-        let otherRequest: NSFetchRequest<OtherEntry> = NSFetchRequest(entityName: "OtherEntry")
-        otherRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as NSDate, endDate as NSDate)
-        if let otherEntries = try? viewContext.fetch(otherRequest) {
-            for entry in otherEntries {
-                let key = groupingFormatter.string(from: entry.date)
-                tempData[key, default: [:]]["Sonstige"] = (tempData[key]?["Sonstige"] ?? 0) + entry.cost
-            }
-        }
-        
-        var aggregatedData: [AnalysisData] = []
-        let sortedKeys = tempData.keys.sorted { key1, key2 in
-            if let date1 = groupingFormatter.date(from: key1),
-               let date2 = groupingFormatter.date(from: key2) {
-                return date1 < date2
-            }
-            return key1 < key2
-        }
-        
-        for key in sortedKeys {
-            let displayString: String
-            if let date = groupingFormatter.date(from: key) {
-                displayString = displayFormatter.string(from: date)
-            } else {
-                displayString = key
-            }
-            if let typeDict = tempData[key] {
-                for (type, cost) in typeDict {
-                    aggregatedData.append(AnalysisData(period: displayString, cost: cost, type: type))
+        displayFormatter.dateFormat = "MMM yyyy"
+
+        let context = PersistenceController.shared.container.newBackgroundContext()
+        context.perform {
+            var tempData: [String: [String: Double]] = [:]
+
+            let fuelRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
+            fuelRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+            if let entries = try? context.fetch(fuelRequest) {
+                for entry in entries {
+                    let key = groupingFormatter.string(from: entry.date)
+                    tempData[key, default: [:]]["Tankbeleg"] = (tempData[key]?["Tankbeleg"] ?? 0) + entry.totalCost
                 }
             }
+
+            let gasRequest: NSFetchRequest<GasEntry> = NSFetchRequest(entityName: "GasEntry")
+            gasRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+            if let entries = try? context.fetch(gasRequest) {
+                for entry in entries {
+                    let key = groupingFormatter.string(from: entry.date)
+                    let totalCost = entry.costPerBottle * Double(entry.bottleCount)
+                    tempData[key, default: [:]]["Gaskosten"] = (tempData[key]?["Gaskosten"] ?? 0) + totalCost
+                }
+            }
+
+            let serviceRequest: NSFetchRequest<ServiceEntry> = NSFetchRequest(entityName: "ServiceEntry")
+            serviceRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+            if let entries = try? context.fetch(serviceRequest) {
+                for entry in entries {
+                    let key = groupingFormatter.string(from: entry.date)
+                    tempData[key, default: [:]]["Ver-/Entsorgung"] = (tempData[key]?["Ver-/Entsorgung"] ?? 0) + entry.cost
+                }
+            }
+
+            let otherRequest: NSFetchRequest<OtherEntry> = NSFetchRequest(entityName: "OtherEntry")
+            otherRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+            if let entries = try? context.fetch(otherRequest) {
+                for entry in entries {
+                    let key = groupingFormatter.string(from: entry.date)
+                    tempData[key, default: [:]]["Sonstige"] = (tempData[key]?["Sonstige"] ?? 0) + entry.cost
+                }
+            }
+
+            let sortedKeys = tempData.keys.sorted { key1, key2 in
+                if let date1 = groupingFormatter.date(from: key1),
+                   let date2 = groupingFormatter.date(from: key2) {
+                    return date1 < date2
+                }
+                return key1 < key2
+            }
+
+            var aggregatedData: [AnalysisData] = []
+            for key in sortedKeys {
+                let displayString: String
+                if let date = groupingFormatter.date(from: key) {
+                    displayString = displayFormatter.string(from: date)
+                } else {
+                    displayString = key
+                }
+                if let typeDict = tempData[key] {
+                    for (type, cost) in typeDict {
+                        aggregatedData.append(AnalysisData(period: displayString, cost: cost, type: type))
+                    }
+                }
+            }
+
+            DispatchQueue.main.async {
+                data = aggregatedData
+                isLoading = false
+            }
         }
-        
-        data = aggregatedData
     }
 }
