@@ -13,15 +13,11 @@ struct EditOtherEntryView: View {
     @State private var cost: String
     @State private var receiptImage: UIImage?
     @State private var pdfData: Data?
-    
-    // Zustände für die Beleg-Auswahl
+
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
-    
-    // Neuer State für die Belegvorschau
     @State private var showReceiptDetail = false
-    
-    // Fehlerhandling
+
     @State private var showErrorAlert: Bool = false
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
@@ -62,48 +58,19 @@ struct EditOtherEntryView: View {
                 TextField("Kosten", text: $cost)
                     .keyboardType(.decimalPad)
             }
-            Section(header: Text("Beleg (Bild/PDF)")) {
-                if let image = receiptImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 150)
-                } else if pdfData != nil {
-                    Image(systemName: "doc.richtext")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 150)
-                }
-                Button("Beleg ändern") {
-                    // Vor dem Starten der Auswahl die vorhandenen Beleg-Daten löschen
-                    receiptImage = nil
-                    pdfData = nil
-                    showingReceiptOptions = true
-                }
-                .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
-                    Button("Aus Fotos wählen") { receiptSource = .photo }
-                    Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
-                    Button("Kamera Scannen") { receiptSource = .scanner }
-                    Button("Abbrechen", role: .cancel) { }
-                }
-            }
-            if receiptImage != nil || pdfData != nil {
-                Section(header: Text("Belegvorschau")) {
-                    Button(action: { showReceiptDetail = true }) {
-                        if let image = receiptImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 120)
-                        } else if pdfData != nil {
-                            Image(systemName: "doc.richtext")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 120)
-                        }
-                    }
-                }
-            }
+            ReceiptPickerSection(
+                receiptImage: $receiptImage,
+                pdfData: $pdfData,
+                showingReceiptOptions: $showingReceiptOptions,
+                receiptSource: $receiptSource,
+                buttonLabel: "Beleg ändern",
+                clearsOnSelect: true
+            )
+            ReceiptPreviewSection(
+                receiptImage: receiptImage,
+                pdfData: pdfData,
+                showDetailAction: { showReceiptDetail = true }
+            )
             Button("Speichern") {
                 saveChanges()
             }
@@ -116,7 +83,7 @@ struct EditOtherEntryView: View {
             }
         }
         .navigationTitle("Sonstiger Beleg bearbeiten")
-        .sheet(item: $receiptSource) { source in
+        .sheet(item: $receiptSource) { _ in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
         .sheet(isPresented: $showReceiptDetail) {
@@ -124,32 +91,9 @@ struct EditOtherEntryView: View {
                 ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
             }
         }
-        .alert(isPresented: $showErrorAlert) {
-            Alert(
-                title: Text("Fehler"),
-                message: Text(errorAlertMessage),
-                primaryButton: .default(Text("OK")),
-                secondaryButton: .default(Text("Log senden"), action: {
-                    showMailView = true
-                })
-            )
-        }
-        .sheet(isPresented: $showMailView) {
-            if let url = ErrorLogger.shared.getLogFileURL(), let logData = try? Data(contentsOf: url) {
-                MailComposeView(
-                    recipients: ["logfile@vanityontour.de"],
-                    subject: "Fehlerlog",
-                    messageBody: "Bitte prüfe den beigefügten Fehlerlog.",
-                    attachmentData: logData,
-                    attachmentMimeType: "text/plain",
-                    attachmentFileName: "error.log"
-                )
-            } else {
-                Text("Logdatei nicht verfügbar.")
-            }
-        }
+        .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
     }
-    
+
     private func saveChanges() {
         guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else { return }
         otherEntry.date = date
@@ -172,7 +116,7 @@ struct EditOtherEntryView: View {
             showErrorAlert = true
         }
     }
-    
+
     private func deleteEntry() {
         viewContext.delete(otherEntry)
         do {

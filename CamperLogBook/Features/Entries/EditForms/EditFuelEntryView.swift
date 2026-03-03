@@ -1,13 +1,5 @@
-//
-//  EditFuelEntryView.swift
-//  CamperLogBook
-//
-//  Created by Oliver Giertz on 16.02.25.
-//
-
 import SwiftUI
 import CoreData
-import PhotosUI
 import CoreLocation
 
 struct EditFuelEntryView: View {
@@ -25,15 +17,11 @@ struct EditFuelEntryView: View {
     @State private var totalCost: String
     @State private var receiptImage: UIImage?
     @State private var pdfData: Data?
-    
-    // Zustände für die Beleg-Auswahl
+
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
-    
-    // Neuer State für die Belegvorschau
     @State private var showReceiptDetail = false
-    
-    // Neue States für den Standort in der Bearbeitung
+
     @State private var saveLocation: Bool
     @State private var manualLocation: CLLocationCoordinate2D?
     @State private var manualAddress: String = ""
@@ -52,8 +40,10 @@ struct EditFuelEntryView: View {
            let data = fuelEntry.receiptData,
            let image = UIImage(data: data) {
             _receiptImage = State(initialValue: image)
+            _pdfData = State(initialValue: nil)
         } else if fuelEntry.receiptType == "pdf",
                   let data = fuelEntry.receiptData {
+            _receiptImage = State(initialValue: nil)
             _pdfData = State(initialValue: data)
         } else {
             _receiptImage = State(initialValue: nil)
@@ -72,7 +62,7 @@ struct EditFuelEntryView: View {
             Section(header: Text("Datum")) {
                 DatePicker("Datum", selection: $date, displayedComponents: .date)
                     .submitLabel(.done)
-                    .onSubmit { hideKeyboard() }
+                    .onSubmit { KeyboardHelper.hideKeyboard() }
             }
             Section(header: Text("Kraftstoffauswahl")) {
                 Toggle("Diesel", isOn: $isDiesel)
@@ -90,67 +80,27 @@ struct EditFuelEntryView: View {
                 TextField("Gesamtkosten", text: $totalCost)
                     .disabled(true)
             }
-            Section(header: Text("Standort")) {
-                Toggle("Standort speichern", isOn: $saveLocation)
-                if saveLocation {
-                    if !manualAddress.isEmpty {
-                        Text("Manuell ausgewählt: \(manualAddress)")
-                    } else if let loc = manualLocation {
-                        Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
-                    } else if let address = fuelEntry.address, !address.isEmpty {
-                        Text(address)
-                    } else {
-                        Text("Kein Standort ausgewählt")
-                    }
-                    Button("Standort manuell auswählen") {
-                        showLocationPicker = true
-                    }
-                } else {
-                    Text("Standort wird nicht gespeichert")
-                }
-            }
-            Section(header: Text("Beleg (Bild/PDF)")) {
-                if let image = receiptImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 150)
-                } else if pdfData != nil {
-                    Image(systemName: "doc.richtext")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 150)
-                }
-                Button("Beleg ändern") {
-                    // Alte Beleg-Daten löschen, um neue Auswahl zu ermöglichen
-                    receiptImage = nil
-                    pdfData = nil
-                    showingReceiptOptions = true
-                }
-                .confirmationDialog("Beleg Quelle wählen", isPresented: $showingReceiptOptions, titleVisibility: .visible) {
-                    Button("Aus Fotos wählen") { receiptSource = .photo }
-                    Button("Aus Dateien (PDF) wählen") { receiptSource = .pdf }
-                    Button("Kamera Scannen") { receiptSource = .scanner }
-                    Button("Abbrechen", role: .cancel) { }
-                }
-            }
-            if receiptImage != nil || pdfData != nil {
-                Section(header: Text("Belegvorschau")) {
-                    Button(action: { showReceiptDetail = true }) {
-                        if let image = receiptImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 120)
-                        } else if pdfData != nil {
-                            Image(systemName: "doc.richtext")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 120)
-                        }
-                    }
-                }
-            }
+            LocationSection(
+                saveLocation: $saveLocation,
+                manualAddress: manualAddress,
+                locationManager: nil,
+                manualLocation: manualLocation,
+                address: fuelEntry.address,
+                showPickerAction: { showLocationPicker = true }
+            )
+            ReceiptPickerSection(
+                receiptImage: $receiptImage,
+                pdfData: $pdfData,
+                showingReceiptOptions: $showingReceiptOptions,
+                receiptSource: $receiptSource,
+                buttonLabel: "Beleg ändern",
+                clearsOnSelect: true
+            )
+            ReceiptPreviewSection(
+                receiptImage: receiptImage,
+                pdfData: pdfData,
+                showDetailAction: { showReceiptDetail = true }
+            )
             Button("Änderungen speichern") {
                 saveChanges()
             }
@@ -168,11 +118,16 @@ struct EditFuelEntryView: View {
                 LocationPickerView(selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
             }
         }
-        .sheet(item: $receiptSource) { source in
+        .sheet(item: $receiptSource) { _ in
             ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         }
+        .sheet(isPresented: $showReceiptDetail) {
+            NavigationView {
+                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
+            }
+        }
     }
-    
+
     private func saveChanges() {
         guard let costValue = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")),
               let currentKmValue = Int64(currentKm) else { return }
@@ -211,7 +166,7 @@ struct EditFuelEntryView: View {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern EditFuelEntryView")
         }
     }
-    
+
     private func deleteEntry() {
         viewContext.delete(fuelEntry)
         do {
@@ -220,11 +175,6 @@ struct EditFuelEntryView: View {
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Löschen EditFuelEntryView")
         }
-    }
-    
-    private func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                          to: nil, from: nil, for: nil)
     }
 }
 

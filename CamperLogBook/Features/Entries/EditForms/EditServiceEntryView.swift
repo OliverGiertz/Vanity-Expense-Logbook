@@ -1,10 +1,3 @@
-//
-//  EditServiceEntryView.swift
-//  CamperLogBook
-//
-//  Created by Oliver Giertz on 16.02.25.
-//
-
 import SwiftUI
 import CoreData
 import CoreLocation
@@ -21,16 +14,14 @@ struct EditServiceEntryView: View {
     @State private var cost: String
     @State private var receiptImage: UIImage?
     @State private var pdfData: Data?
-    // Neuer State für Frischwasser-Eingabe
     @State private var freshWaterText: String
-    
-    // Neuer State für die Belegvorschau
+
+    @State private var showingReceiptOptions = false
+    @State private var receiptSource: ReceiptSource? = nil
     @State private var showReceiptDetail = false
-    
-    // Neue States für Standort in der Bearbeitung
+
     @State private var saveLocation: Bool
     @State private var manualLocation: CLLocationCoordinate2D?
-    // Neuer State für die manuelle Adresse
     @State private var manualAddress: String = ""
     @State private var showLocationPicker: Bool = false
 
@@ -41,14 +32,12 @@ struct EditServiceEntryView: View {
         _isDisposal = State(initialValue: serviceEntry.isDisposal)
         _cost = State(initialValue: String(serviceEntry.cost))
         _freshWaterText = State(initialValue: String(serviceEntry.freshWater))
-        if let data = serviceEntry.receiptData {
-            if let image = UIImage(data: data) {
-                _receiptImage = State(initialValue: image)
-                _pdfData = State(initialValue: nil)
-            } else {
-                _receiptImage = State(initialValue: nil)
-                _pdfData = State(initialValue: data)
-            }
+        if let data = serviceEntry.receiptData, let image = UIImage(data: data) {
+            _receiptImage = State(initialValue: image)
+            _pdfData = State(initialValue: nil)
+        } else if let data = serviceEntry.receiptData {
+            _receiptImage = State(initialValue: nil)
+            _pdfData = State(initialValue: data)
         } else {
             _receiptImage = State(initialValue: nil)
             _pdfData = State(initialValue: nil)
@@ -84,42 +73,27 @@ struct EditServiceEntryView: View {
                     .submitLabel(.done)
                     .onSubmit { KeyboardHelper.hideKeyboard() }
             }
-            Section(header: Text("Standort")) {
-                Toggle("Standort speichern", isOn: $saveLocation)
-                if saveLocation {
-                    if !manualAddress.isEmpty {
-                        Text("Manuell ausgewählt: \(manualAddress)")
-                    } else if let loc = manualLocation {
-                        Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
-                    } else if let address = serviceEntry.address, !address.isEmpty {
-                        Text(address)
-                    } else {
-                        Text("Kein Standort ausgewählt")
-                    }
-                    Button("Standort manuell auswählen") {
-                        showLocationPicker = true
-                    }
-                } else {
-                    Text("Standort wird nicht gespeichert")
-                }
-            }
-            if receiptImage != nil || pdfData != nil {
-                Section(header: Text("Belegvorschau")) {
-                    Button(action: { showReceiptDetail = true }) {
-                        if let image = receiptImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 120)
-                        } else if pdfData != nil {
-                            Image(systemName: "doc.richtext")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 120)
-                        }
-                    }
-                }
-            }
+            LocationSection(
+                saveLocation: $saveLocation,
+                manualAddress: manualAddress,
+                locationManager: nil,
+                manualLocation: manualLocation,
+                address: serviceEntry.address,
+                showPickerAction: { showLocationPicker = true }
+            )
+            ReceiptPickerSection(
+                receiptImage: $receiptImage,
+                pdfData: $pdfData,
+                showingReceiptOptions: $showingReceiptOptions,
+                receiptSource: $receiptSource,
+                buttonLabel: "Beleg ändern",
+                clearsOnSelect: true
+            )
+            ReceiptPreviewSection(
+                receiptImage: receiptImage,
+                pdfData: pdfData,
+                showDetailAction: { showReceiptDetail = true }
+            )
             Button("Speichern") {
                 saveChanges()
             }
@@ -134,12 +108,19 @@ struct EditServiceEntryView: View {
         .navigationTitle("Ver-/Entsorgung bearbeiten")
         .sheet(isPresented: $showLocationPicker) {
             NavigationView {
-                // Hier wird sowohl der ausgewählte Koordinate als auch die Adresse übergeben
                 LocationPickerView(selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
             }
         }
+        .sheet(item: $receiptSource) { _ in
+            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+        }
+        .sheet(isPresented: $showReceiptDetail) {
+            NavigationView {
+                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
+            }
+        }
     }
-    
+
     private func saveChanges() {
         guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else { return }
         serviceEntry.date = date
@@ -153,13 +134,17 @@ struct EditServiceEntryView: View {
         }
         if let image = receiptImage {
             serviceEntry.receiptData = image.jpegData(compressionQuality: 0.8)
+        } else if let pdf = pdfData {
+            serviceEntry.receiptData = pdf
         }
         if saveLocation {
             if let loc = manualLocation {
                 serviceEntry.latitude = loc.latitude
                 serviceEntry.longitude = loc.longitude
             }
-            // Behalte vorhandene Adresse, falls manuell gesetzt wurde; ansonsten wird der ServiceEntry.address unverändert.
+            if !manualAddress.isEmpty {
+                serviceEntry.address = manualAddress
+            }
         } else {
             serviceEntry.latitude = 0
             serviceEntry.longitude = 0
@@ -169,17 +154,17 @@ struct EditServiceEntryView: View {
             try viewContext.save()
             dismiss()
         } catch {
-            print("Fehler beim Speichern des Service-Eintrags: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Speichern EditServiceEntryView")
         }
     }
-    
+
     private func deleteEntry() {
         viewContext.delete(serviceEntry)
         do {
             try viewContext.save()
             dismiss()
         } catch {
-            print("Fehler beim Löschen des Service-Eintrags: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Löschen EditServiceEntryView")
         }
     }
 }
