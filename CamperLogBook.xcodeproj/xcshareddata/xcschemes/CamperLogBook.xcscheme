@@ -56,6 +56,17 @@
                ReferencedContainer = "container:CamperLogBook.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A7B1B3D02F56EB030000DBCC"
+               BuildableName = "CamperLogBookTests.xctest"
+               BlueprintName = "CamperLogBookTests"
+               ReferencedContainer = "container:CamperLogBook.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
