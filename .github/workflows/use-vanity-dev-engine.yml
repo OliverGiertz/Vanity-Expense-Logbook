@@ -12,5 +12,3 @@ jobs:
     uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@4628673afdc1a2fa9fed7737b34713d04be4489a
     with:
       repo_type: ios
-      xcode_project: CamperLogBook.xcodeproj
-      xcode_scheme: CamperLogBook

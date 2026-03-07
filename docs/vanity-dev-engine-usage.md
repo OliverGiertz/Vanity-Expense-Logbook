@@ -68,8 +68,6 @@ jobs:
     uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@4628673afdc1a2fa9fed7737b34713d04be4489a
     with:
       repo_type: ios
-      xcode_project: CamperLogBook.xcodeproj
-      xcode_scheme: CamperLogBook
 ```
 
 2. Repo-Variable setzen: `USE_VANITY_DEV_ENGINE=true`
@@ -84,7 +82,8 @@ jobs:
 
 Hinweis fuer iOS-Repos:
 
-- Fuer iOS sollten Build/Test entweder zentral erweitert oder ueber Xcode Cloud abgesichert werden.
+- Die aktuell gepinnte Engine-Version unterstuetzt nur `repo_type`.
+- Erweiterte Inputs (z. B. `xcode_project`, `xcode_scheme`) erst verwenden, wenn die zentrale Engine diese offiziell veroeffentlicht.
 
 ## Prompt-Vorlage fuer künftige Entwicklungsaufgaben
 
