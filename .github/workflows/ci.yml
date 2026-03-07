@@ -1,13 +1,14 @@
-name: CI
+name: ci
 
 on:
   push:
     branches: [main, develop, 'release/**', 'fix/**', 'feature/**']
   pull_request:
-    branches: [main]
+    branches: ['**']
 
 jobs:
-  build:
+  ci:
+    if: ${{ vars.USE_VANITY_DEV_ENGINE != 'true' }}
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4

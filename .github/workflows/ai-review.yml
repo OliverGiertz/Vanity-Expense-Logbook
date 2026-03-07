@@ -1,0 +1,74 @@
+name: ai-review
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  ai-review:
+    if: >
+      vars.USE_VANITY_DEV_ENGINE != 'true' &&
+      (github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    steps:
+      - name: Validate ChatGPT and Claude review status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request
+              ? context.payload.pull_request.number
+              : context.payload.issue.number;
+
+            const pr = await github.rest.pulls.get({ owner, repo, pull_number });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: pull_number,
+              per_page: 100
+            });
+
+            const bodyParts = [pr.data.body || "", ...comments.map(c => c.body || "")];
+            const allText = bodyParts.join("\n\n").toLowerCase();
+
+            const hasSection = (name) => allText.includes(`### ${name}`.toLowerCase());
+            const hasPass = (name) => {
+              const regex = new RegExp(`###\\s*${name}[\\s\\S]*?dod status\\s*:\\s*pass`, "i");
+              return bodyParts.some(part => regex.test(part || ""));
+            };
+            const hasZeroBlocker = (name) => {
+              const regex = new RegExp(`###\\s*${name}[\\s\\S]*?blocker\\s*:\\s*0`, "i");
+              return bodyParts.some(part => regex.test(part || ""));
+            };
+            const hasZeroMajor = (name) => {
+              const regex = new RegExp(`###\\s*${name}[\\s\\S]*?major\\s*:\\s*0`, "i");
+              return bodyParts.some(part => regex.test(part || ""));
+            };
+
+            const checks = [
+              { name: "ChatGPT", section: hasSection("ChatGPT"), pass: hasPass("ChatGPT"), blocker: hasZeroBlocker("ChatGPT"), major: hasZeroMajor("ChatGPT") },
+              { name: "Claude", section: hasSection("Claude"), pass: hasPass("Claude"), blocker: hasZeroBlocker("Claude"), major: hasZeroMajor("Claude") }
+            ];
+
+            const failures = checks.flatMap(c => {
+              const missing = [];
+              if (!c.section) missing.push("missing section");
+              if (!c.pass) missing.push("missing `DoD status: PASS`");
+              if (!c.blocker) missing.push("missing `Blocker: 0`");
+              if (!c.major) missing.push("missing `Major: 0`");
+              return missing.length ? [`${c.name}: ${missing.join(", ")}`] : [];
+            });
+
+            if (failures.length) {
+              core.setFailed(`AI review gate failed:\n- ${failures.join("\n- ")}`);
+            } else {
+              core.info("AI review gate passed.");
+            }
