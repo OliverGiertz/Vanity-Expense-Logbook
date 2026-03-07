@@ -3,6 +3,30 @@ import CoreLocation
 
 // A collection of reusable form components to maintain consistency and reduce code duplication
 
+struct FormMetricRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(label)
+                    .lineLimit(1)
+                Spacer(minLength: 12)
+                Text(value)
+                    .bold()
+                    .lineLimit(1)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label)
+                Text(value)
+                    .bold()
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 // MARK: - Basic Input Fields
 
 struct DatePickerField: View {
@@ -132,20 +156,27 @@ struct LocationSection: View {
             if saveLocation {
                 if !manualAddress.isEmpty {
                     Text("Manuell ausgewählt: \(manualAddress)")
+                        .fixedSize(horizontal: false, vertical: true)
                 } else if let lm = locationManager, lm.lastLocation != nil {
                     Text("Automatisch ermittelt: \(lm.address)")
+                        .fixedSize(horizontal: false, vertical: true)
                 } else if let loc = manualLocation {
                     Text("Manuell ausgewählt: Lat: \(loc.latitude), Lon: \(loc.longitude)")
+                        .fixedSize(horizontal: false, vertical: true)
                 } else if let address = address, !address.isEmpty {
                     Text(address)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text("Kein Standort ermittelt")
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Button("Standort manuell auswählen") {
                     showPickerAction()
                 }
+                .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("Standort wird nicht gespeichert")
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -197,6 +228,7 @@ struct SaveSection: View {
             Button(action: action) {
                 HStack {
                     Text(title)
+                        .multilineTextAlignment(.leading)
                     if isLoading {
                         Spacer()
                         ProgressView()

@@ -60,7 +60,7 @@ struct ProfileView: View {
                         }
                         .onDelete(perform: deleteCategories)
                     }
-                    HStack {
+                    VStack(alignment: .leading, spacing: 8) {
                         TextField("Neue Kategorie", text: $newCategoryName)
                         Button("Hinzufügen") {
                             addCategory()

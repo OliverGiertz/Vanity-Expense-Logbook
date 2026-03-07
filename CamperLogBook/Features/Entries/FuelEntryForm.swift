@@ -92,10 +92,10 @@ struct FuelEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: currentKm) { _, _ in updateKmDifference() }
                     if let diff = kmDifference {
-                        HStack { Text("Gefahrene Kilometer:"); Spacer(); Text("\(diff) km").bold() }
+                        FormMetricRow(label: "Gefahrene Kilometer:", value: "\(diff) km")
                     }
                     if let consumption = consumptionPer100km {
-                        HStack { Text("Verbrauch pro 100km:"); Spacer(); Text(String(format: "%.2f L", consumption)).bold() }
+                        FormMetricRow(label: "Verbrauch pro 100km:", value: String(format: "%.2f L", consumption))
                     }
                 }
                 Section(header: Text("Tankdaten")) {

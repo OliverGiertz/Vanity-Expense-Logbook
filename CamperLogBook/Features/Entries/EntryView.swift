@@ -49,6 +49,15 @@ enum EntryType: String, CaseIterable, Identifiable {
 }
 
 struct EntryView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var columns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible())]
+        }
+        return [GridItem(.flexible()), GridItem(.flexible())]
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -58,10 +67,7 @@ struct EntryView: View {
                         .fontWeight(.semibold)
                         .padding(.top)
                     
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], spacing: 16) {
+                    LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(EntryType.allCases) { entryType in
                             NavigationLink(destination: destinationView(for: entryType)) {
                                 EntryTypeCard(entryType: entryType)
@@ -107,14 +113,18 @@ struct EntryTypeCard: View {
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
+                .multilineTextAlignment(.center)
+                .lineLimit(nil)
             
             Text(entryType.description)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 120)
+        .frame(minHeight: 120)
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
