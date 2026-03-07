@@ -20,6 +20,19 @@ struct AnalysisView: View {
     @State private var selectedChartType: ChartType = .bar
     @State private var data: [AnalysisData] = []
     @State private var isLoading: Bool = false
+    @State private var loadTask: Task<Void, Never>?
+
+    private static let monthKeyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM"
+        return formatter
+    }()
+
+    private static let monthDisplayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM yyyy"
+        return formatter
+    }()
 
     // Zeitraum-Auswahl: Standard = aktuelles Jahr
     @State private var startDate: Date = {
@@ -43,8 +56,8 @@ struct AnalysisView: View {
                     DatePicker("Bis", selection: $endDate, displayedComponents: .date)
                 }
                 .padding(.horizontal)
-                .onChange(of: startDate) { _ in loadData() }
-                .onChange(of: endDate) { _ in loadData() }
+                .onChange(of: startDate) { _ in scheduleLoadData() }
+                .onChange(of: endDate) { _ in scheduleLoadData() }
 
                 // Kostentyp-Auswahl
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -110,87 +123,148 @@ struct AnalysisView: View {
                 Spacer()
             }
             .navigationTitle("Auswertung")
-            .onAppear { loadData() }
+            .onAppear { scheduleLoadData() }
+            .onDisappear {
+                loadTask?.cancel()
+                loadTask = nil
+            }
         }
     }
 
-    private func loadData() {
+    private func scheduleLoadData() {
+        loadTask?.cancel()
         isLoading = true
+
         let start = startDate
         let end = endDate
-        let groupingFormatter = DateFormatter()
-        groupingFormatter.dateFormat = "yyyy-MM"
-        let displayFormatter = DateFormatter()
-        displayFormatter.dateFormat = "MMM yyyy"
 
-        let context = PersistenceController.shared.container.newBackgroundContext()
-        context.perform {
-            var tempData: [String: [String: Double]] = [:]
+        loadTask = Task {
+            let context = PersistenceController.shared.container.newBackgroundContext()
+            context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
 
-            let fuelRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
-            fuelRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
-            if let entries = try? context.fetch(fuelRequest) {
-                for entry in entries {
-                    let key = groupingFormatter.string(from: entry.date)
-                    tempData[key, default: [:]]["Tankbeleg"] = (tempData[key]?["Tankbeleg"] ?? 0) + entry.totalCost
+            do {
+                let aggregatedData = try await context.perform {
+                    var tempData: [String: [String: Double]] = [:]
+
+                    let fuel = try fetchFuelData(in: context, start: start, end: end)
+                    let gas = try fetchGasData(in: context, start: start, end: end)
+                    let service = try fetchServiceData(in: context, start: start, end: end)
+                    let other = try fetchOtherData(in: context, start: start, end: end)
+
+                    merge(type: "Tankbeleg", values: fuel, into: &tempData)
+                    merge(type: "Gaskosten", values: gas, into: &tempData)
+                    merge(type: "Ver-/Entsorgung", values: service, into: &tempData)
+                    merge(type: "Sonstige", values: other, into: &tempData)
+
+                    return buildAnalysisData(from: tempData)
                 }
-            }
 
-            let gasRequest: NSFetchRequest<GasEntry> = NSFetchRequest(entityName: "GasEntry")
-            gasRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
-            if let entries = try? context.fetch(gasRequest) {
-                for entry in entries {
-                    let key = groupingFormatter.string(from: entry.date)
-                    let totalCost = entry.costPerBottle * Double(entry.bottleCount)
-                    tempData[key, default: [:]]["Gaskosten"] = (tempData[key]?["Gaskosten"] ?? 0) + totalCost
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    data = aggregatedData
+                    isLoading = false
                 }
-            }
-
-            let serviceRequest: NSFetchRequest<ServiceEntry> = NSFetchRequest(entityName: "ServiceEntry")
-            serviceRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
-            if let entries = try? context.fetch(serviceRequest) {
-                for entry in entries {
-                    let key = groupingFormatter.string(from: entry.date)
-                    tempData[key, default: [:]]["Ver-/Entsorgung"] = (tempData[key]?["Ver-/Entsorgung"] ?? 0) + entry.cost
+            } catch {
+                ErrorLogger.shared.log(error: error, additionalInfo: "AnalysisView loadData failed")
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    data = []
+                    isLoading = false
                 }
-            }
-
-            let otherRequest: NSFetchRequest<OtherEntry> = NSFetchRequest(entityName: "OtherEntry")
-            otherRequest.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
-            if let entries = try? context.fetch(otherRequest) {
-                for entry in entries {
-                    let key = groupingFormatter.string(from: entry.date)
-                    tempData[key, default: [:]]["Sonstige"] = (tempData[key]?["Sonstige"] ?? 0) + entry.cost
-                }
-            }
-
-            let sortedKeys = tempData.keys.sorted { key1, key2 in
-                if let date1 = groupingFormatter.date(from: key1),
-                   let date2 = groupingFormatter.date(from: key2) {
-                    return date1 < date2
-                }
-                return key1 < key2
-            }
-
-            var aggregatedData: [AnalysisData] = []
-            for key in sortedKeys {
-                let displayString: String
-                if let date = groupingFormatter.date(from: key) {
-                    displayString = displayFormatter.string(from: date)
-                } else {
-                    displayString = key
-                }
-                if let typeDict = tempData[key] {
-                    for (type, cost) in typeDict {
-                        aggregatedData.append(AnalysisData(period: displayString, cost: cost, type: type))
-                    }
-                }
-            }
-
-            DispatchQueue.main.async {
-                data = aggregatedData
-                isLoading = false
             }
         }
+    }
+
+    private func fetchFuelData(in context: NSManagedObjectContext, start: Date, end: Date) throws -> [String: Double] {
+        let request = NSFetchRequest<NSDictionary>(entityName: "FuelEntry")
+        request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+        request.resultType = .dictionaryResultType
+        request.propertiesToFetch = ["date", "totalCost"]
+        let rows = try context.fetch(request)
+        return aggregate(rows: rows) { row in
+            (row["date"] as? Date, row["totalCost"] as? Double)
+        }
+    }
+
+    private func fetchGasData(in context: NSManagedObjectContext, start: Date, end: Date) throws -> [String: Double] {
+        let request = NSFetchRequest<NSDictionary>(entityName: "GasEntry")
+        request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+        request.resultType = .dictionaryResultType
+        request.propertiesToFetch = ["date", "costPerBottle", "bottleCount"]
+        let rows = try context.fetch(request)
+        return aggregate(rows: rows) { row in
+            guard let date = row["date"] as? Date else { return nil }
+            let price = (row["costPerBottle"] as? NSNumber)?.doubleValue ?? 0
+            let count = (row["bottleCount"] as? NSNumber)?.doubleValue ?? 0
+            return (date, price * count)
+        }
+    }
+
+    private func fetchServiceData(in context: NSManagedObjectContext, start: Date, end: Date) throws -> [String: Double] {
+        let request = NSFetchRequest<NSDictionary>(entityName: "ServiceEntry")
+        request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+        request.resultType = .dictionaryResultType
+        request.propertiesToFetch = ["date", "cost"]
+        let rows = try context.fetch(request)
+        return aggregate(rows: rows) { row in
+            let cost = (row["cost"] as? NSNumber)?.doubleValue
+            return (row["date"] as? Date, cost)
+        }
+    }
+
+    private func fetchOtherData(in context: NSManagedObjectContext, start: Date, end: Date) throws -> [String: Double] {
+        let request = NSFetchRequest<NSDictionary>(entityName: "OtherEntry")
+        request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+        request.resultType = .dictionaryResultType
+        request.propertiesToFetch = ["date", "cost"]
+        let rows = try context.fetch(request)
+        return aggregate(rows: rows) { row in
+            let cost = (row["cost"] as? NSNumber)?.doubleValue
+            return (row["date"] as? Date, cost)
+        }
+    }
+
+    private func aggregate(rows: [NSDictionary], mapper: (NSDictionary) -> (Date?, Double?)?) -> [String: Double] {
+        var result: [String: Double] = [:]
+        for row in rows {
+            guard let mapped = mapper(row),
+                  let date = mapped.0,
+                  let value = mapped.1 else { continue }
+            let key = Self.monthKeyFormatter.string(from: date)
+            result[key, default: 0] += value
+        }
+        return result
+    }
+
+    private func merge(type: String, values: [String: Double], into target: inout [String: [String: Double]]) {
+        for (period, value) in values where value != 0 {
+            target[period, default: [:]][type] = value
+        }
+    }
+
+    private func buildAnalysisData(from groupedData: [String: [String: Double]]) -> [AnalysisData] {
+        let sortedKeys = groupedData.keys.sorted { key1, key2 in
+            if let date1 = Self.monthKeyFormatter.date(from: key1),
+               let date2 = Self.monthKeyFormatter.date(from: key2) {
+                return date1 < date2
+            }
+            return key1 < key2
+        }
+
+        var aggregatedData: [AnalysisData] = []
+        for key in sortedKeys {
+            let displayString: String
+            if let date = Self.monthKeyFormatter.date(from: key) {
+                displayString = Self.monthDisplayFormatter.string(from: date)
+            } else {
+                displayString = key
+            }
+            if let typeDict = groupedData[key] {
+                for (type, cost) in typeDict {
+                    aggregatedData.append(AnalysisData(period: displayString, cost: cost, type: type))
+                }
+            }
+        }
+        return aggregatedData
     }
 }
