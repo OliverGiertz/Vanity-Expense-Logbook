@@ -9,8 +9,7 @@ struct EditFuelEntryView: View {
     @ObservedObject var fuelEntry: FuelEntry
 
     @State private var date: Date
-    @State private var isDiesel: Bool
-    @State private var isAdBlue: Bool
+    @State private var fuelType: String
     @State private var currentKm: String
     @State private var liters: String
     @State private var costPerLiter: String
@@ -30,8 +29,7 @@ struct EditFuelEntryView: View {
     init(fuelEntry: FuelEntry) {
         self.fuelEntry = fuelEntry
         _date = State(initialValue: fuelEntry.date)
-        _isDiesel = State(initialValue: fuelEntry.isDiesel)
-        _isAdBlue = State(initialValue: fuelEntry.isAdBlue)
+        _fuelType = State(initialValue: FuelEntry.normalizedFuelType(fuelEntry.fuelType, isDiesel: fuelEntry.isDiesel, isAdBlue: fuelEntry.isAdBlue))
         _currentKm = State(initialValue: String(fuelEntry.currentKm))
         _liters = State(initialValue: String(fuelEntry.liters))
         _costPerLiter = State(initialValue: String(fuelEntry.costPerLiter))
@@ -65,8 +63,11 @@ struct EditFuelEntryView: View {
                     .onSubmit { KeyboardHelper.hideKeyboard() }
             }
             Section(header: Text("Kraftstoffauswahl")) {
-                Toggle("Diesel", isOn: $isDiesel)
-                Toggle("AdBlue", isOn: $isAdBlue)
+                Picker("Kraftstoffart", selection: $fuelType) {
+                    ForEach(FuelEntry.fuelTypes, id: \.self) { type in
+                        Text(type).tag(type)
+                    }
+                }
             }
             Section(header: Text("Fahrzeuginformationen")) {
                 TextField("Aktueller KM Stand", text: $currentKm)
@@ -132,8 +133,9 @@ struct EditFuelEntryView: View {
         guard let costValue = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")),
               let currentKmValue = Int64(currentKm) else { return }
         fuelEntry.date = date
-        fuelEntry.isDiesel = isDiesel
-        fuelEntry.isAdBlue = isAdBlue
+        fuelEntry.fuelType = fuelType
+        fuelEntry.isDiesel = (fuelType == "Diesel")
+        fuelEntry.isAdBlue = (fuelType == "AdBlue")
         fuelEntry.currentKm = currentKmValue
         fuelEntry.liters = Double(liters) ?? 0.0
         fuelEntry.costPerLiter = costValue
@@ -184,6 +186,7 @@ struct EditFuelEntryView_Previews: PreviewProvider {
         let entry = FuelEntry(context: context)
         entry.id = UUID()
         entry.date = Date()
+        entry.fuelType = "Diesel"
         entry.isDiesel = true
         entry.isAdBlue = false
         entry.currentKm = 10000

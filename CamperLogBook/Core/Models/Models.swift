@@ -15,6 +15,7 @@ public class FuelEntry: NSManagedObject, Identifiable {
     @NSManaged public var longitude: Double
     @NSManaged public var receiptData: Data?
     @NSManaged public var receiptType: String?
+    @NSManaged public var fuelType: String?
     
     // Neue Felder: Gerundete GPS-Werte
     @NSManaged public var roundedLatitude: Double
@@ -25,6 +26,28 @@ public class FuelEntry: NSManagedObject, Identifiable {
 }
 
 extension FuelEntry {
+    static let fuelTypes = ["Diesel", "Super", "Super Plus", "AdBlue"]
+
+    static func normalizedFuelType(_ fuelType: String?, isDiesel: Bool, isAdBlue: Bool) -> String {
+        if let raw = fuelType?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty {
+            switch raw.lowercased() {
+            case "diesel":
+                return "Diesel"
+            case "super", "super e5", "super e10":
+                return "Super"
+            case "super plus":
+                return "Super Plus"
+            case "adblue":
+                return "AdBlue"
+            default:
+                break
+            }
+        }
+        if isAdBlue { return "AdBlue" }
+        if isDiesel { return "Diesel" }
+        return "Super"
+    }
+
     static func fetchAll() -> NSFetchRequest<FuelEntry> {
         let request: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]

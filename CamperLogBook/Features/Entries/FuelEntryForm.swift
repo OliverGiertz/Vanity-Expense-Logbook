@@ -9,8 +9,7 @@ struct FuelEntryForm: View {
     @EnvironmentObject var locationManager: LocationManager
 
     @State private var date = Date()
-    @State private var isDiesel: Bool = true
-    @State private var isAdBlue: Bool = false
+    @State private var fuelType: String = "Diesel"
     @State private var currentKm: String = ""
     @State private var liters: String = ""
     @State private var costPerLiter: String = ""
@@ -77,8 +76,11 @@ struct FuelEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
                 Section(header: Text("Kraftstoffauswahl")) {
-                    Toggle("Diesel", isOn: $isDiesel)
-                    Toggle("AdBlue", isOn: $isAdBlue)
+                    Picker("Kraftstoffart", selection: $fuelType) {
+                        ForEach(FuelEntry.fuelTypes, id: \.self) { type in
+                            Text(type).tag(type)
+                        }
+                    }
                 }
                 Section(header: Text("Fahrzeuginformationen")) {
                     TextField("Aktueller KM Stand", text: $currentKm)
@@ -202,8 +204,9 @@ struct FuelEntryForm: View {
         let newEntry = FuelEntry(context: viewContext)
         newEntry.id = UUID()
         newEntry.date = date
-        newEntry.isDiesel = isDiesel
-        newEntry.isAdBlue = isAdBlue
+        newEntry.fuelType = fuelType
+        newEntry.isDiesel = (fuelType == "Diesel")
+        newEntry.isAdBlue = (fuelType == "AdBlue")
         newEntry.currentKm = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) ?? 0
         newEntry.liters = Double(liters.replacingOccurrences(of: ",", with: ".")) ?? 0.0
         newEntry.costPerLiter = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")) ?? 0.0
@@ -367,8 +370,7 @@ struct FuelEntryForm: View {
 
     private func clearFields() {
         date = Date()
-        isDiesel = true
-        isAdBlue = false
+        fuelType = "Diesel"
         currentKm = ""
         liters = ""
         costPerLiter = ""
