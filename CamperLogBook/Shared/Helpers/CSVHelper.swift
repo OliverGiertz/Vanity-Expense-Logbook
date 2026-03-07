@@ -61,10 +61,7 @@ struct CSVHelper {
         
         // Trennzeichen automatisch erkennen (Export nutzt Tab)
         let delimiter: Character
-        if headerLine.contains("\t") { delimiter = "\t" }
-        else if headerLine.contains(";") { delimiter = ";" }
-        else if headerLine.contains(",") { delimiter = "," }
-        else { delimiter = "\t" }
+        if headerLine.contains("\t") { delimiter = "\t" } else if headerLine.contains(";") { delimiter = ";" } else if headerLine.contains(",") { delimiter = "," } else { delimiter = "\t" }
         
         let headers = headerLine.split(separator: delimiter).map { $0.trimmingCharacters(in: .whitespaces) }
         var importedCount = 0
@@ -73,10 +70,8 @@ struct CSVHelper {
             let values = line.split(separator: delimiter, omittingEmptySubsequences: false).map { String($0) }
             if values.count < headers.count { continue }
             var row = [String: String]()
-            for (index, header) in headers.enumerated() {
-                if index < values.count {
-                    row[String(header)] = values[index]
-                }
+            for (index, header) in headers.enumerated() where index < values.count {
+                row[String(header)] = values[index]
             }
             // Alle Keys in Kleinbuchstaben
             let rowLower = Dictionary(uniqueKeysWithValues: row.map { ($0.key.lowercased(), $0.value) })
@@ -97,11 +92,11 @@ struct CSVHelper {
             }
             switch type {
             case .fuel:
-                if let _ = try? importFuelEntry(from: rowLower, in: context) { importedCount += 1 }
+                if (try? importFuelEntry(from: rowLower, in: context)) != nil { importedCount += 1 }
             case .gas:
-                if let _ = try? importGasEntry(from: rowLower, in: context) { importedCount += 1 }
+                if (try? importGasEntry(from: rowLower, in: context)) != nil { importedCount += 1 }
             case .other:
-                if let _ = try? importOtherEntry(from: rowLower, in: context) { importedCount += 1 }
+                if (try? importOtherEntry(from: rowLower, in: context)) != nil { importedCount += 1 }
             }
         }
         if context.hasChanges { try context.save() }
@@ -125,10 +120,7 @@ struct CSVHelper {
         guard let headerLine = lines.first else { return .init(fuel: 0, gas: 0, other: 0) }
 
         let delimiter: Character
-        if headerLine.contains("\t") { delimiter = "\t" }
-        else if headerLine.contains(";") { delimiter = ";" }
-        else if headerLine.contains(",") { delimiter = "," }
-        else { delimiter = "\t" }
+        if headerLine.contains("\t") { delimiter = "\t" } else if headerLine.contains(";") { delimiter = ";" } else if headerLine.contains(",") { delimiter = "," } else { delimiter = "\t" }
 
         let headers = headerLine.split(separator: delimiter).map { $0.trimmingCharacters(in: .whitespaces) }
         let headersLower = headers.map { $0.lowercased() }
@@ -141,10 +133,8 @@ struct CSVHelper {
             let values = line.split(separator: delimiter, omittingEmptySubsequences: false).map { String($0) }
             if values.isEmpty { continue }
             var row = [String: String]()
-            for (index, header) in headers.enumerated() {
-                if index < values.count {
-                    row[String(header)] = values[index]
-                }
+            for (index, header) in headers.enumerated() where index < values.count {
+                row[String(header)] = values[index]
             }
             let rowLower = Dictionary(uniqueKeysWithValues: row.map { ($0.key.lowercased(), $0.value) })
 
@@ -170,11 +160,11 @@ struct CSVHelper {
 
             switch type {
             case .fuel:
-                if let _ = try? importFuelEntry(from: rowLower, in: context) { fuelCount += 1 }
+                if (try? importFuelEntry(from: rowLower, in: context)) != nil { fuelCount += 1 }
             case .gas:
-                if let _ = try? importGasEntry(from: rowLower, in: context) { gasCount += 1 }
+                if (try? importGasEntry(from: rowLower, in: context)) != nil { gasCount += 1 }
             case .other:
-                if let _ = try? importOtherEntry(from: rowLower, in: context) { otherCount += 1 }
+                if (try? importOtherEntry(from: rowLower, in: context)) != nil { otherCount += 1 }
             }
         }
 

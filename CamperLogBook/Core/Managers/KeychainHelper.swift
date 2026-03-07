@@ -5,7 +5,6 @@
 //  Created by Oliver Giertz on 27.02.25.
 //
 
-
 import Foundation
 import Security
 
@@ -33,7 +32,7 @@ struct KeychainHelper {
         let query = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecReturnData as String: kCFBooleanTrue!,
+            kSecReturnData as String: kCFBooleanTrue as Any,
             kSecMatchLimit as String: kSecMatchLimitOne
         ] as [String: Any]
         

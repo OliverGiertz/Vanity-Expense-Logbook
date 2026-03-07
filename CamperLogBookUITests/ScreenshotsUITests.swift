@@ -237,11 +237,9 @@ final class ScreenshotsUITests: XCTestCase {
                 "Beim Verwenden der App erlauben",
                 "Einmal erlauben"
             ]
-            for label in buttons {
-                if alert.buttons[label].exists {
-                    alert.buttons[label].tap()
-                    return true
-                }
+            for label in buttons where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
             }
             return false
         }

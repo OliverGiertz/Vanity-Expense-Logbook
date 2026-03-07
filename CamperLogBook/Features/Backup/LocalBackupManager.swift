@@ -4,10 +4,34 @@ import UIKit
 import SwiftUI
 import UserNotifications
 
+/// Fehlertypen für Backup-Operationen
+enum BackupError: LocalizedError {
+    case notInitialized
+    case directoryError
+    case backupNotFound
+    case invalidFormat
+    case incompatibleVersion
+    case missingCoreDataBackup
+    case noAsset
+
+    var errorDescription: String? {
+        switch self {
+        case .notInitialized: return "Backup-System nicht initialisiert"
+        case .directoryError: return "Backup-Verzeichnis konnte nicht erstellt werden"
+        case .backupNotFound: return "Backup nicht gefunden"
+        case .invalidFormat: return "Ungültiges Backup-Format oder fehlende Versionsinformationen"
+        case .incompatibleVersion: return "Das Backup ist nicht mit dieser App-Version kompatibel"
+        case .missingCoreDataBackup: return "CoreData-Backup nicht gefunden"
+        case .noAsset: return "Kein Backup-Asset in iCloud gefunden"
+        }
+    }
+}
+
 /// Hauptklasse zur Verwaltung von lokalen Backups
+@MainActor
 class LocalBackupManager: ObservableObject {
     static let shared = LocalBackupManager()
-    
+
     // Backup status
     @Published var isBackupInProgress = false
     @Published var isRestoreInProgress = false
@@ -17,21 +41,20 @@ class LocalBackupManager: ObservableObject {
     @Published var lastBackupStatus: BackupStatus = .none
     @Published var lastErrorMessage: String?
     @Published var availableBackups: [BackupInfo] = []
-    
+
     // App version und Dateninformationen
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     }
-    
+
     // App-Name für Backup-Verzeichnis
     private var appName: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ??
         Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ??
         "CamperLogBook"
     }
-    
-    // Backup-Verzeichnis im Documents-Verzeichnis – hier wird bewusst keine Exclusion gesetzt,
-    // damit der Ordner auch für den User sichtbar ist (z. B. via Files-App).
+
+    // Backup-Verzeichnis im Documents-Verzeichnis
     private var backupDirectoryURL: URL? {
         let fm = FileManager.default
         guard let documentDir = fm.urls(for: .documentDirectory, in: .userDomainMask).first else {
@@ -41,535 +64,259 @@ class LocalBackupManager: ObservableObject {
         if !fm.fileExists(atPath: backupDir.path) {
             do {
                 try fm.createDirectory(at: backupDir, withIntermediateDirectories: true, attributes: nil)
-                print("Backup-Verzeichnis erstellt: \(backupDir.path)")
             } catch {
                 ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Erstellen des Backup-Verzeichnisses")
             }
         }
         return backupDir
     }
-    
+
     private var coreDataCoordinator: CoreDataBackupCoordinator?
     private var receiptCoordinator: ReceiptBackupCoordinator?
-    
+
     private init() {
         loadAvailableBackups()
     }
-    
+
     /// Stellt eine Verbindung zu CoreData her, um Backup-Operationen durchzuführen
     func connect(to context: NSManagedObjectContext) {
         self.coreDataCoordinator = CoreDataBackupCoordinator(context: context)
         self.receiptCoordinator = ReceiptBackupCoordinator(context: context)
-        print("Backup-System mit CoreData verbunden.")
     }
-    
-    /// Lädt die verfügbaren Backups
+
+    /// Lädt die verfügbaren Backups (synchron, lightweight Verzeichnis-Listing)
     func loadAvailableBackups() {
         guard let backupDir = backupDirectoryURL else {
-            DispatchQueue.main.async {
-                self.availableBackups = []
-                self.lastBackupStatus = .notAvailable
-            }
+            availableBackups = []
+            lastBackupStatus = .notAvailable
             return
         }
-        
+
         do {
             let contents = try FileManager.default.contentsOfDirectory(at: backupDir, includingPropertiesForKeys: [.creationDateKey])
-            
             var backups: [BackupInfo] = []
-            for item in contents {
-                // Es werden nur ZIP-Dateien berücksichtigt, die mit "backup_" beginnen.
-                if item.lastPathComponent.hasPrefix("backup_") && item.pathExtension.lowercased() == "zip" {
-                    let attrs = try FileManager.default.attributesOfItem(atPath: item.path)
-                    let creationDate = attrs[.creationDate] as? Date ?? Date()
-                    let backupID = item.deletingPathExtension().lastPathComponent
-                    var version = appVersion
-                    if let versionInfo = extractVersionFromZip(at: item) {
-                        version = versionInfo
-                    }
-                    
-                    backups.append(BackupInfo(
-                        id: backupID,
-                        date: creationDate,
-                        version: version,
-                        path: item
-                    ))
+
+            for item in contents where item.lastPathComponent.hasPrefix("backup_") && item.pathExtension.lowercased() == "zip" {
+                let attrs = try FileManager.default.attributesOfItem(atPath: item.path)
+                let creationDate = attrs[.creationDate] as? Date ?? Date()
+                let backupID = item.deletingPathExtension().lastPathComponent
+                var version = appVersion
+                if let versionInfo = extractVersionFromZip(at: item) {
+                    version = versionInfo
                 }
+                backups.append(BackupInfo(id: backupID, date: creationDate, version: version, path: item))
             }
-            
+
             backups.sort { $0.date > $1.date }
-            
-            DispatchQueue.main.async {
-                self.availableBackups = backups
-                self.lastBackupStatus = backups.isEmpty ? .notAvailable : .available
-                self.lastBackupDate = backups.first?.date
-            }
-            print("Verfügbare Backups neu geladen: \(backups.count) gefunden.")
+            availableBackups = backups
+            lastBackupStatus = backups.isEmpty ? .notAvailable : .available
+            lastBackupDate = backups.first?.date
         } catch {
-            DispatchQueue.main.async {
-                self.availableBackups = []
-                self.lastBackupStatus = .error
-                self.lastErrorMessage = "Fehler beim Laden der Backups: \(error.localizedDescription)"
-            }
-            print("Fehler beim Laden der Backups: \(error.localizedDescription)")
+            availableBackups = []
+            lastBackupStatus = .error
+            lastErrorMessage = "Fehler beim Laden der Backups: \(error.localizedDescription)"
         }
     }
-    
-    /// Versucht, die Version aus einer ZIP-Datei zu extrahieren
-    private func extractVersionFromZip(at zipURL: URL) -> String? {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
-        
-        do {
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-            try FileManager.default.unzipItem(at: zipURL, to: tempDir)
-            let versionPath = tempDir.appendingPathComponent("version.plist")
-            if FileManager.default.fileExists(atPath: versionPath.path),
-               let versionData = try? Data(contentsOf: versionPath),
-               let versionInfo = try? PropertyListSerialization.propertyList(from: versionData, format: nil) as? [String: Any],
-               let backupVersion = versionInfo["appVersion"] as? String {
-                print("Backup-Version extrahiert aus version.plist: \(backupVersion)")
-                return backupVersion
-            }
-            // Fallback: Versuche die Version aus dem Manifest zu lesen
-            let archiveData = try Data(contentsOf: zipURL)
-            if let manifest = try ZipArchive.extractManifest(from: archiveData) {
-                print("Backup-Version extrahiert aus Manifest: \(manifest.version)")
-                return manifest.version
-            }
-            return nil
-        } catch {
-            print("Fehler beim Extrahieren der Backup-Version: \(error.localizedDescription)")
-            return nil
-        }
-    }
-    
+
     // MARK: - Backup-Operationen
-    
-    /// Erstellt ein Backup aller App-Daten:
-    /// 1. Es wird ein temporäres Verzeichnis erstellt und mit CoreData- und Belegdaten befüllt.
-    /// 2. Dieses Verzeichnis wird in das Backup-Verzeichnis kopiert.
-    /// 3. Aus dem kopierten Ordner wird ein echtes ZIP-Archiv erstellt.
-    /// 4. Nach erfolgreicher ZIP-Erstellung wird testweise nur das temporäre Verzeichnis gelöscht.
-    func createBackup(completion: @escaping (Bool, String?) -> Void) {
+
+    /// Erstellt ein Backup aller App-Daten
+    func createBackup() async throws {
         guard let coreDataCoordinator = coreDataCoordinator,
               let receiptCoordinator = receiptCoordinator else {
-            completion(false, "Backup-System nicht initialisiert")
-            return
+            throw BackupError.notInitialized
         }
-        
         guard let backupDir = backupDirectoryURL else {
-            completion(false, "Backup-Verzeichnis konnte nicht erstellt werden")
-            return
+            throw BackupError.directoryError
         }
-        
-        DispatchQueue.main.async {
-            self.isBackupInProgress = true
-            self.backupProgress = 0.0
-            self.lastErrorMessage = nil
-            self.lastBackupStatus = .inProgress
-        }
-        
+
+        isBackupInProgress = true
+        backupProgress = 0.0
+        lastErrorMessage = nil
+        lastBackupStatus = .inProgress
+
+        defer { isBackupInProgress = false }
+
         let timestamp = Int(Date().timeIntervalSince1970)
         let backupID = "backup_\(timestamp)"
         let tempDirURL = FileManager.default.temporaryDirectory.appendingPathComponent(backupID)
-        
-        do {
-            // Temporäres Verzeichnis erstellen
-            if FileManager.default.fileExists(atPath: tempDirURL.path) {
-                try FileManager.default.removeItem(at: tempDirURL)
-            }
-            try FileManager.default.createDirectory(at: tempDirURL, withIntermediateDirectories: true)
-            print("Temporäres Verzeichnis erstellt: \(tempDirURL.path)")
-            
-            // Schritt 1: CoreData exportieren
-            let coreDataURL = tempDirURL.appendingPathComponent("coredata_backup.sqlite")
-            print("Starte CoreData-Export nach: \(coreDataURL.path)")
-            coreDataCoordinator.exportStore(to: coreDataURL) { [weak self] success, error in
-                guard let self = self else { return }
-                if !success {
-                    print("CoreData-Export fehlgeschlagen: \(error ?? "Unbekannter Fehler")")
-                    self.finishBackup(success: false, error: error, tempDir: tempDirURL, completion: completion)
-                    return
-                }
-                print("CoreData-Export erfolgreich.")
-                DispatchQueue.main.async { self.backupProgress = 0.3 }
-                
-                // Schritt 2: Belege exportieren
-                let receiptsURL = tempDirURL.appendingPathComponent("receipts")
-                try? FileManager.default.createDirectory(at: receiptsURL, withIntermediateDirectories: true)
-                print("Starte Belege-Export nach: \(receiptsURL.path)")
-                receiptCoordinator.exportReceipts(to: receiptsURL) { [weak self] success, receiptCount, error in
-                    guard let self = self else { return }
-                    if !success {
-                        print("Belege-Export fehlgeschlagen: \(error ?? "Unbekannter Fehler")")
-                        self.finishBackup(success: false, error: error, tempDir: tempDirURL, completion: completion)
-                        return
-                    }
-                    print("Belege-Export erfolgreich. Anzahl Belege: \(receiptCount)")
-                    DispatchQueue.main.async { self.backupProgress = 0.6 }
-                    
-                    // Schritt 3: Versionsinfo erstellen
-                    let versionInfoPath = tempDirURL.appendingPathComponent("version.plist")
-                    let versionInfo: [String: Any] = [
-                        "appVersion": self.appVersion,
-                        "buildNumber": Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1",
-                        "backupDate": Date(),
-                        "receiptCount": receiptCount
-                    ]
-                    
-                    do {
-                        let versionData = try PropertyListSerialization.data(fromPropertyList: versionInfo, format: .xml, options: 0)
-                        try versionData.write(to: versionInfoPath)
-                        print("Versionsinfo erstellt unter: \(versionInfoPath.path)")
-                        
-                        // Backup-Info-Datei erstellen
-                        let infoPath = tempDirURL.appendingPathComponent("backup.info")
-                        let infoContent = "timestamp: \(timestamp)\ndate: \(Date())\n"
-                        try infoContent.write(to: infoPath, atomically: true, encoding: .utf8)
-                        print("Backup-Info-Datei erstellt: \(infoPath.path)")
-                        
-                        // Schritt 4: Kopiere das temporäre Verzeichnis in das Backup-Verzeichnis
-                        let backupFolderURL = backupDir.appendingPathComponent(backupID)
-                        try FileManager.default.copyItem(at: tempDirURL, to: backupFolderURL)
-                        print("Temporäres Verzeichnis kopiert nach: \(backupFolderURL.path)")
-                        
-                        // Schritt 5: Erstelle ein ZIP-Archiv aus dem kopierten Ordner
-                        let zipURL = backupDir.appendingPathComponent("\(backupID).zip")
-                        print("Erstelle ZIP-Archiv unter: \(zipURL.path)")
-                        try FileManager.default.zipItem(at: backupFolderURL, to: zipURL)
-                        print("ZIP-Archiv erfolgreich erstellt.")
-                        
-                        // Schritt 6: Temporäres Verzeichnis und das kopierte Backup-Verzeichnis löschen
-                        try FileManager.default.removeItem(at: tempDirURL)
-                        print("Temporäres Verzeichnis gelöscht: \(tempDirURL.path)")
-                        try FileManager.default.removeItem(at: backupFolderURL)
-                        print("Backup-Verzeichnis (unkomprimiert) gelöscht: \(backupFolderURL.path)")
-                        
-                        DispatchQueue.main.async {
-                            self.backupProgress = 1.0
-                            self.lastBackupDate = Date()
-                            self.lastBackupStatus = .available
-                            self.loadAvailableBackups()
-                            completion(true, nil)
-                        }
-                    } catch {
-                        print("Fehler beim Erstellen der Versionsdatei oder beim Kopieren: \(error.localizedDescription)")
-                        self.finishBackup(success: false, error: "Fehler beim Erstellen der Versionsdatei: \(error.localizedDescription)", tempDir: tempDirURL, completion: completion)
-                    }
-                }
-            }
-        } catch {
-            print("Fehler bei der Backup-Vorbereitung: \(error.localizedDescription)")
-            finishBackup(success: false, error: "Fehler bei der Backup-Vorbereitung: \(error.localizedDescription)", tempDir: tempDirURL, completion: completion)
+
+        defer { try? FileManager.default.removeItem(at: tempDirURL) }
+
+        if FileManager.default.fileExists(atPath: tempDirURL.path) {
+            try FileManager.default.removeItem(at: tempDirURL)
         }
+        try FileManager.default.createDirectory(at: tempDirURL, withIntermediateDirectories: true)
+
+        // Schritt 1: CoreData exportieren
+        let coreDataURL = tempDirURL.appendingPathComponent("coredata_backup.sqlite")
+        try await coreDataCoordinator.exportStore(to: coreDataURL)
+        backupProgress = 0.3
+
+        // Schritt 2: Belege exportieren
+        let receiptsURL = tempDirURL.appendingPathComponent("receipts")
+        try? FileManager.default.createDirectory(at: receiptsURL, withIntermediateDirectories: true)
+        let receiptCount = try await receiptCoordinator.exportReceipts(to: receiptsURL)
+        backupProgress = 0.6
+
+        // Schritt 3: Versionsinfo erstellen
+        let versionInfo: [String: Any] = [
+            "appVersion": appVersion,
+            "buildNumber": Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1",
+            "backupDate": Date(),
+            "receiptCount": receiptCount
+        ]
+        let versionData = try PropertyListSerialization.data(fromPropertyList: versionInfo, format: .xml, options: 0)
+        try versionData.write(to: tempDirURL.appendingPathComponent("version.plist"))
+
+        let infoContent = "timestamp: \(timestamp)\ndate: \(Date())\n"
+        try infoContent.write(to: tempDirURL.appendingPathComponent("backup.info"), atomically: true, encoding: .utf8)
+
+        // Schritt 4: In Backup-Verzeichnis kopieren
+        let backupFolderURL = backupDir.appendingPathComponent(backupID)
+        try FileManager.default.copyItem(at: tempDirURL, to: backupFolderURL)
+
+        // Schritt 5: ZIP erstellen
+        let zipURL = backupDir.appendingPathComponent("\(backupID).zip")
+        try FileManager.default.zipItem(at: backupFolderURL, to: zipURL)
+
+        // Schritt 6: Unkomprimierten Ordner löschen
+        try FileManager.default.removeItem(at: backupFolderURL)
+
+        backupProgress = 1.0
+        lastBackupDate = Date()
+        lastBackupStatus = .available
+        loadAvailableBackups()
     }
-    
-    /// Stellt ein Backup wieder her (ZIP entpacken, Version prüfen, CoreData und Belege importieren)
-    func restoreBackup(backupID: String, completion: @escaping (Bool, String?) -> Void) {
+
+    /// Stellt ein Backup wieder her
+    func restoreBackup(backupID: String) async throws {
         guard let coreDataCoordinator = coreDataCoordinator,
               let receiptCoordinator = receiptCoordinator else {
-            completion(false, "Backup-System nicht initialisiert")
-            return
+            throw BackupError.notInitialized
         }
-        
         guard let backupDir = backupDirectoryURL else {
-            completion(false, "Backup-Verzeichnis nicht gefunden")
-            return
+            throw BackupError.directoryError
         }
-        
+
         let zipURL = backupDir.appendingPathComponent("\(backupID).zip")
-        if !FileManager.default.fileExists(atPath: zipURL.path) {
-            completion(false, "Backup nicht gefunden")
-            return
-        }
-        
-        DispatchQueue.main.async {
-            self.isRestoreInProgress = true
-            self.restoreProgress = 0.0
-            self.lastErrorMessage = nil
-        }
-        
-        let tempDirURL = FileManager.default.temporaryDirectory.appendingPathComponent("restore_\(backupID)")
-        if FileManager.default.fileExists(atPath: tempDirURL.path) {
-            try? FileManager.default.removeItem(at: tempDirURL)
-        }
-        
-        do {
-            try FileManager.default.createDirectory(at: tempDirURL, withIntermediateDirectories: true)
-            print("Restore: Temporäres Verzeichnis erstellt: \(tempDirURL.path)")
-            try FileManager.default.unzipItem(at: zipURL, to: tempDirURL)
-            print("Restore: ZIP-Archiv entpackt von: \(zipURL.path)")
-            
-            // Debug: Zeige den Inhalt des entpackten Ordners
-            let contents = try FileManager.default.contentsOfDirectory(at: tempDirURL, includingPropertiesForKeys: nil)
-            print("Restore: Inhalt des entpackten Ordners: \(contents.map { $0.lastPathComponent })")
-            
-            DispatchQueue.main.async { self.restoreProgress = 0.2 }
-            
-            // Versuche zuerst, die Version aus der version.plist zu lesen
-            let versionPath = tempDirURL.appendingPathComponent("version.plist")
-            var backupVersion: String?
-            if FileManager.default.fileExists(atPath: versionPath.path),
-               let versionData = try? Data(contentsOf: versionPath),
-               let versionInfo = try? PropertyListSerialization.propertyList(from: versionData, format: nil) as? [String: Any],
-               let v = versionInfo["appVersion"] as? String {
-                backupVersion = v
-                print("Restore: Backup-Version aus version.plist: \(v)")
-            } else {
-                // Fallback: Versuche die Version aus dem Manifest zu lesen
-                let archiveData = try Data(contentsOf: zipURL)
-                if let manifest = try ZipArchive.extractManifest(from: archiveData) {
-                    backupVersion = manifest.version
-                    print("Restore: Backup-Version aus Manifest: \(manifest.version)")
-                }
-            }
-            
-            guard let backupVersionFinal = backupVersion else {
-                finishRestore(success: false, error: "Ungültiges Backup-Format oder fehlende Versionsinformationen", tempDir: tempDirURL, completion: completion)
-                return
-            }
-            
-            let isCompatible = isBackupVersionCompatible(backupVersionFinal)
-            guard isCompatible else {
-                finishRestore(success: false, error: "Das Backup ist nicht mit dieser App-Version kompatibel", tempDir: tempDirURL, completion: completion)
-                return
-            }
-            
-            let coreDataPath = tempDirURL.appendingPathComponent("coredata_backup.sqlite")
-            guard FileManager.default.fileExists(atPath: coreDataPath.path) else {
-                finishRestore(success: false, error: "CoreData-Backup nicht gefunden", tempDir: tempDirURL, completion: completion)
-                return
-            }
-            print("Restore: CoreData-Backup gefunden: \(coreDataPath.path)")
-            
-            coreDataCoordinator.importStore(from: coreDataPath) { [weak self] success, coreDataError in
-                guard let self = self else { return }
-                if !success {
-                    print("Restore: CoreData-Import fehlgeschlagen: \(coreDataError ?? "Unbekannter Fehler")")
-                    self.finishRestore(success: false, error: "CoreData-Import fehlgeschlagen: \(coreDataError ?? "Unbekannter Fehler")", tempDir: tempDirURL, completion: completion)
-                    return
-                }
-                print("Restore: CoreData-Import erfolgreich.")
-                DispatchQueue.main.async { self.restoreProgress = 0.7 }
-                
-                let receiptsDir = tempDirURL.appendingPathComponent("receipts")
-                guard FileManager.default.fileExists(atPath: receiptsDir.path) else {
-                    self.finishRestore(success: false, error: "Belege nicht gefunden", tempDir: tempDirURL, completion: completion)
-                    return
-                }
-                print("Restore: Belege-Verzeichnis gefunden: \(receiptsDir.path)")
-                
-                receiptCoordinator.importReceipts(from: receiptsDir) { [weak self] success, receiptError in
-                    guard let self = self else { return }
-                    if !success {
-                        print("Restore: Belege-Import fehlgeschlagen: \(receiptError ?? "Unbekannter Fehler")")
-                        self.finishRestore(success: false, error: "Belege-Import fehlgeschlagen: \(receiptError ?? "Unbekannter Fehler")", tempDir: tempDirURL, completion: completion)
-                    } else {
-                        try? FileManager.default.removeItem(at: tempDirURL)
-                        print("Restore: Temporäres Verzeichnis gelöscht: \(tempDirURL.path)")
-                        DispatchQueue.main.async {
-                            self.restoreProgress = 1.0
-                            self.isRestoreInProgress = false
-                            completion(true, nil)
-                        }
-                    }
-                }
-            }
-        } catch {
-            print("Restore: Fehler beim Entpacken des Backups: \(error.localizedDescription)")
-            finishRestore(success: false, error: "Fehler beim Entpacken des Backups: \(error.localizedDescription)", tempDir: tempDirURL, completion: completion)
-        }
-    }
-    
-    /// Importiert ein Backup von einem vom User ausgewählten ZIP
-    func importBackup(from zipURL: URL, completion: @escaping (Bool, String?) -> Void) {
         guard FileManager.default.fileExists(atPath: zipURL.path) else {
-            completion(false, "Backup nicht gefunden")
-            return
+            throw BackupError.backupNotFound
         }
-        
-        DispatchQueue.main.async {
-            self.isRestoreInProgress = true
-            self.restoreProgress = 0.0
-            self.lastErrorMessage = nil
-        }
-        
-        let tempDirURL = FileManager.default.temporaryDirectory.appendingPathComponent("import_\(Int(Date().timeIntervalSince1970))")
+
+        isRestoreInProgress = true
+        restoreProgress = 0.0
+        lastErrorMessage = nil
+
+        defer { isRestoreInProgress = false }
+
+        let tempDirURL = FileManager.default.temporaryDirectory.appendingPathComponent("restore_\(backupID)")
+        defer { try? FileManager.default.removeItem(at: tempDirURL) }
+
         if FileManager.default.fileExists(atPath: tempDirURL.path) {
-            try? FileManager.default.removeItem(at: tempDirURL)
+            try FileManager.default.removeItem(at: tempDirURL)
         }
-        
-        do {
-            try FileManager.default.createDirectory(at: tempDirURL, withIntermediateDirectories: true)
-            print("Import: Temporäres Verzeichnis erstellt: \(tempDirURL.path)")
-            try FileManager.default.unzipItem(at: zipURL, to: tempDirURL)
-            print("Import: ZIP-Archiv entpackt von: \(zipURL.path)")
-            DispatchQueue.main.async { self.restoreProgress = 0.2 }
-            
-            let versionPath = tempDirURL.appendingPathComponent("version.plist")
-            var backupVersion: String?
-            if FileManager.default.fileExists(atPath: versionPath.path),
-               let versionData = try? Data(contentsOf: versionPath),
-               let versionInfo = try? PropertyListSerialization.propertyList(from: versionData, format: nil) as? [String: Any],
-               let v = versionInfo["appVersion"] as? String {
-                backupVersion = v
-                print("Import: Backup-Version aus version.plist: \(v)")
-            } else {
-                let archiveData = try Data(contentsOf: zipURL)
-                if let manifest = try ZipArchive.extractManifest(from: archiveData) {
-                    backupVersion = manifest.version
-                    print("Import: Backup-Version aus Manifest: \(manifest.version)")
-                }
-            }
-            
-            guard let backupVersionFinal = backupVersion else {
-                finishRestore(success: false, error: "Ungültiges Backup-Format oder fehlende Versionsinformationen", tempDir: tempDirURL, completion: completion)
-                return
-            }
-            
-            let isCompatible = isBackupVersionCompatible(backupVersionFinal)
-            guard isCompatible else {
-                finishRestore(success: false, error: "Das Backup ist nicht mit dieser App-Version kompatibel", tempDir: tempDirURL, completion: completion)
-                return
-            }
-            
-            let coreDataPath = tempDirURL.appendingPathComponent("coredata_backup.sqlite")
-            guard FileManager.default.fileExists(atPath: coreDataPath.path) else {
-                finishRestore(success: false, error: "CoreData-Backup nicht gefunden", tempDir: tempDirURL, completion: completion)
-                return
-            }
-            print("Import: CoreData-Backup gefunden: \(coreDataPath.path)")
-            
-            coreDataCoordinator?.importStore(from: coreDataPath) { [weak self] success, coreDataError in
-                guard let self = self else { return }
-                if !success {
-                    print("Import: CoreData-Import fehlgeschlagen: \(coreDataError ?? "Unbekannter Fehler")")
-                    self.finishRestore(success: false, error: "CoreData-Import fehlgeschlagen: \(coreDataError ?? "Unbekannter Fehler")", tempDir: tempDirURL, completion: completion)
-                    return
-                }
-                print("Import: CoreData-Import erfolgreich.")
-                DispatchQueue.main.async { self.restoreProgress = 0.7 }
-                
-                let receiptsDir = tempDirURL.appendingPathComponent("receipts")
-                guard FileManager.default.fileExists(atPath: receiptsDir.path) else {
-                    self.finishRestore(success: false, error: "Belege nicht gefunden", tempDir: tempDirURL, completion: completion)
-                    return
-                }
-                print("Import: Belege-Verzeichnis gefunden: \(receiptsDir.path)")
-                
-                self.receiptCoordinator?.importReceipts(from: receiptsDir) { [weak self] success, receiptError in
-                    guard let self = self else { return }
-                    if !success {
-                        print("Import: Belege-Import fehlgeschlagen: \(receiptError ?? "Unbekannter Fehler")")
-                        self.finishRestore(success: false, error: "Belege-Import fehlgeschlagen: \(receiptError ?? "Unbekannter Fehler")", tempDir: tempDirURL, completion: completion)
-                    } else {
-                        try? FileManager.default.removeItem(at: tempDirURL)
-                        print("Import: Temporäres Verzeichnis gelöscht: \(tempDirURL.path)")
-                        DispatchQueue.main.async {
-                            self.restoreProgress = 1.0
-                            self.isRestoreInProgress = false
-                            completion(true, nil)
-                        }
-                    }
-                }
-            }
-        } catch {
-            print("Import: Fehler beim Entpacken des Backups: \(error.localizedDescription)")
-            finishRestore(success: false, error: "Fehler beim Entpacken des Backups: \(error.localizedDescription)", tempDir: tempDirURL, completion: completion)
+        try FileManager.default.createDirectory(at: tempDirURL, withIntermediateDirectories: true)
+        try FileManager.default.unzipItem(at: zipURL, to: tempDirURL)
+
+        restoreProgress = 0.2
+
+        let backupVersion = try readVersion(from: tempDirURL, fallbackZip: zipURL)
+        guard isBackupVersionCompatible(backupVersion) else {
+            throw BackupError.incompatibleVersion
         }
+
+        let coreDataPath = tempDirURL.appendingPathComponent("coredata_backup.sqlite")
+        guard FileManager.default.fileExists(atPath: coreDataPath.path) else {
+            throw BackupError.missingCoreDataBackup
+        }
+
+        try coreDataCoordinator.importStore(from: coreDataPath)
+        restoreProgress = 0.7
+
+        let receiptsDir = tempDirURL.appendingPathComponent("receipts")
+        try await receiptCoordinator.importReceipts(from: receiptsDir)
+
+        restoreProgress = 1.0
     }
-    
+
+    /// Importiert ein Backup von einem vom User ausgewählten ZIP
+    func importBackup(from zipURL: URL) async throws {
+        guard let coreDataCoordinator = coreDataCoordinator,
+              let receiptCoordinator = receiptCoordinator else {
+            throw BackupError.notInitialized
+        }
+        guard FileManager.default.fileExists(atPath: zipURL.path) else {
+            throw BackupError.backupNotFound
+        }
+
+        isRestoreInProgress = true
+        restoreProgress = 0.0
+        lastErrorMessage = nil
+
+        defer { isRestoreInProgress = false }
+
+        let tempDirURL = FileManager.default.temporaryDirectory.appendingPathComponent("import_\(Int(Date().timeIntervalSince1970))")
+        defer { try? FileManager.default.removeItem(at: tempDirURL) }
+
+        if FileManager.default.fileExists(atPath: tempDirURL.path) {
+            try FileManager.default.removeItem(at: tempDirURL)
+        }
+        try FileManager.default.createDirectory(at: tempDirURL, withIntermediateDirectories: true)
+        try FileManager.default.unzipItem(at: zipURL, to: tempDirURL)
+
+        restoreProgress = 0.2
+
+        let backupVersion = try readVersion(from: tempDirURL, fallbackZip: zipURL)
+        guard isBackupVersionCompatible(backupVersion) else {
+            throw BackupError.incompatibleVersion
+        }
+
+        let coreDataPath = tempDirURL.appendingPathComponent("coredata_backup.sqlite")
+        guard FileManager.default.fileExists(atPath: coreDataPath.path) else {
+            throw BackupError.missingCoreDataBackup
+        }
+
+        try coreDataCoordinator.importStore(from: coreDataPath)
+        restoreProgress = 0.7
+
+        let receiptsDir = tempDirURL.appendingPathComponent("receipts")
+        try await receiptCoordinator.importReceipts(from: receiptsDir)
+
+        restoreProgress = 1.0
+        loadAvailableBackups()
+    }
+
     /// Löscht ein Backup
-    func deleteBackup(backupID: String, completion: @escaping (Bool, String?) -> Void) {
+    func deleteBackup(backupID: String) throws {
         guard let backupDir = backupDirectoryURL else {
-            completion(false, "Backup-Verzeichnis nicht gefunden")
-            return
+            throw BackupError.directoryError
         }
         let zipURL = backupDir.appendingPathComponent("\(backupID).zip")
-        do {
-            if FileManager.default.fileExists(atPath: zipURL.path) {
-                try FileManager.default.removeItem(at: zipURL)
-                print("Backup gelöscht: \(zipURL.path)")
-                loadAvailableBackups()
-                completion(true, nil)
-            } else {
-                completion(false, "Backup nicht gefunden")
-            }
-        } catch {
-            completion(false, "Fehler beim Löschen: \(error.localizedDescription)")
+        guard FileManager.default.fileExists(atPath: zipURL.path) else {
+            throw BackupError.backupNotFound
         }
+        try FileManager.default.removeItem(at: zipURL)
+        loadAvailableBackups()
     }
-    
+
     /// Exportiert ein Backup zur Freigabe
-    func exportBackup(backupID: String, completion: @escaping (URL?, String?) -> Void) {
+    func exportBackup(backupID: String) throws -> URL {
         guard let backupDir = backupDirectoryURL else {
-            completion(nil, "Backup-Verzeichnis nicht gefunden")
-            return
+            throw BackupError.directoryError
         }
         let zipURL = backupDir.appendingPathComponent("\(backupID).zip")
-        if !FileManager.default.fileExists(atPath: zipURL.path) {
-            completion(nil, "Backup nicht gefunden")
-            return
+        guard FileManager.default.fileExists(atPath: zipURL.path) else {
+            throw BackupError.backupNotFound
         }
         let tempZipURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(backupID).zip")
         if FileManager.default.fileExists(atPath: tempZipURL.path) {
             try? FileManager.default.removeItem(at: tempZipURL)
         }
-        do {
-            try FileManager.default.copyItem(at: zipURL, to: tempZipURL)
-            print("Backup exportiert nach: \(tempZipURL.path)")
-            completion(tempZipURL, nil)
-        } catch {
-            completion(nil, "Fehler beim Exportieren: \(error.localizedDescription)")
-        }
+        try FileManager.default.copyItem(at: zipURL, to: tempZipURL)
+        return tempZipURL
     }
-    
-    // MARK: - Hilfsmethoden
-    
-    private func finishBackup(success: Bool, error: String?, tempDir: URL, completion: @escaping (Bool, String?) -> Void) {
-        if FileManager.default.fileExists(atPath: tempDir.path) {
-            try? FileManager.default.removeItem(at: tempDir)
-            print("FinishBackup: Temporäres Verzeichnis entfernt: \(tempDir.path)")
-        }
-        DispatchQueue.main.async {
-            self.isBackupInProgress = false
-            self.backupProgress = success ? 1.0 : 0.0
-            if success {
-                self.lastBackupDate = Date()
-                self.lastBackupStatus = .available
-                self.loadAvailableBackups()
-            } else {
-                self.lastErrorMessage = error
-                self.lastBackupStatus = .error
-            }
-            completion(success, error)
-        }
-    }
-    
-    private func finishRestore(success: Bool, error: String?, tempDir: URL, completion: @escaping (Bool, String?) -> Void) {
-        if FileManager.default.fileExists(atPath: tempDir.path) {
-            try? FileManager.default.removeItem(at: tempDir)
-            print("FinishRestore: Temporäres Verzeichnis entfernt: \(tempDir.path)")
-        }
-        DispatchQueue.main.async {
-            self.isRestoreInProgress = false
-            self.restoreProgress = success ? 1.0 : 0.0
-            if !success {
-                self.lastErrorMessage = error
-            }
-            completion(success, error)
-        }
-    }
-    
-    private func isBackupVersionCompatible(_ backupVersion: String) -> Bool {
-        let currentMajorVersion = appVersion.split(separator: ".").first ?? ""
-        let backupMajorVersion = backupVersion.split(separator: ".").first ?? ""
-        return currentMajorVersion == backupMajorVersion
-    }
-    
+
     // MARK: - Automatische Backups
 
     func enableAutomaticBackups() {
@@ -587,41 +334,89 @@ class LocalBackupManager: ObservableObject {
     }
 
     /// Führt ein automatisches Backup durch, wenn es fällig ist (> 7 Tage seit letztem Auto-Backup).
-    /// Wird beim App-Start / Wechsel in den Vordergrund aufgerufen.
     func performBackupIfDue() {
-        guard isAutomaticBackupEnabled, coreDataCoordinator != nil else { return }
-        guard !isBackupInProgress else { return }
+        guard isAutomaticBackupEnabled, coreDataCoordinator != nil, !isBackupInProgress else { return }
 
         let lastAutoBackup = UserDefaults.standard.object(forKey: "lastAutoBackupDate") as? Date
         let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
 
-        guard lastAutoBackup == nil || lastAutoBackup! < sevenDaysAgo else { return }
+        if let lastBackupDate = lastAutoBackup, lastBackupDate >= sevenDaysAgo { return }
 
-        createBackup { success, _ in
-            if success {
+        Task {
+            do {
+                try await createBackup()
                 UserDefaults.standard.set(Date(), forKey: "lastAutoBackupDate")
-                print("Automatisches lokales Backup erfolgreich.")
+            } catch {
+                lastErrorMessage = error.localizedDescription
             }
         }
     }
 
     private func scheduleNextAutomaticBackup() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-            if granted {
-                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["autoBackupReminder"])
-                var components = DateComponents()
-                components.hour = 2
-                components.minute = 0
-                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-                let content = UNMutableNotificationContent()
-                content.title = "Automatisches Backup"
-                content.body = "Deine Vanity Expense Logbook Daten werden jetzt gesichert"
-                content.sound = UNNotificationSound.default
-                content.userInfo = ["actionType": "autoBackup"]
-                let request = UNNotificationRequest(identifier: "autoBackupReminder", content: content, trigger: trigger)
-                UNUserNotificationCenter.current().add(request)
-            }
+        Task {
+            guard let granted = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]),
+                  granted else { return }
+
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["autoBackupReminder"])
+            var components = DateComponents()
+            components.hour = 2
+            components.minute = 0
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            let content = UNMutableNotificationContent()
+            content.title = "Automatisches Backup"
+            content.body = "Deine Vanity Expense Logbook Daten werden jetzt gesichert"
+            content.sound = UNNotificationSound.default
+            content.userInfo = ["actionType": "autoBackup"]
+            let request = UNNotificationRequest(identifier: "autoBackupReminder", content: content, trigger: trigger)
+            try? await UNUserNotificationCenter.current().add(request)
         }
+    }
+
+    // MARK: - Hilfsmethoden
+
+    private func extractVersionFromZip(at zipURL: URL) -> String? {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        do {
+            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            try FileManager.default.unzipItem(at: zipURL, to: tempDir)
+            let versionPath = tempDir.appendingPathComponent("version.plist")
+            if FileManager.default.fileExists(atPath: versionPath.path),
+               let versionData = try? Data(contentsOf: versionPath),
+               let versionInfo = try? PropertyListSerialization.propertyList(from: versionData, format: nil) as? [String: Any],
+               let backupVersion = versionInfo["appVersion"] as? String {
+                return backupVersion
+            }
+            let archiveData = try Data(contentsOf: zipURL)
+            if let manifest = try ZipArchive.extractManifest(from: archiveData) {
+                return manifest.version
+            }
+            return nil
+        } catch {
+            return nil
+        }
+    }
+
+    private func readVersion(from tempDir: URL, fallbackZip: URL) throws -> String {
+        let versionPath = tempDir.appendingPathComponent("version.plist")
+        if FileManager.default.fileExists(atPath: versionPath.path),
+           let versionData = try? Data(contentsOf: versionPath),
+           let versionInfo = try? PropertyListSerialization.propertyList(from: versionData, format: nil) as? [String: Any],
+           let version = versionInfo["appVersion"] as? String {
+            return version
+        }
+        let archiveData = try Data(contentsOf: fallbackZip)
+        if let manifest = try ZipArchive.extractManifest(from: archiveData) {
+            return manifest.version
+        }
+        throw BackupError.invalidFormat
+    }
+
+    private func isBackupVersionCompatible(_ backupVersion: String) -> Bool {
+        let currentMajorVersion = appVersion.split(separator: ".").first ?? ""
+        let backupMajorVersion = backupVersion.split(separator: ".").first ?? ""
+        return currentMajorVersion == backupMajorVersion
     }
 }
 
@@ -635,7 +430,7 @@ extension LocalBackupManager {
         case inProgress
         case error
     }
-    
+
     struct BackupInfo: Identifiable {
         let id: String
         let date: Date

@@ -27,7 +27,7 @@ struct StartInfoView: View {
             Text(appName)
                 .font(.largeTitle)
                 .bold()
-            Text("Version \(appVersion)" + (releaseDate != nil ? " (\(releaseDate!))" : ""))
+            Text("Version \(appVersion)" + (releaseDate.map { " (\($0))" } ?? ""))
                 .font(.title2)
             // Copyright als Text, z. B. "(c) Vanity on Tour 2025"
             Text("© Vanity on Tour \(currentYear)")
