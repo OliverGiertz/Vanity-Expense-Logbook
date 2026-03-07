@@ -200,7 +200,7 @@ struct CSVHelperTests {
 
         let entry = FuelEntry(context: stack.context)
         entry.id = UUID()
-        entry.date = Calendar.current.date(from: DateComponents(year: 2025, month: 3, day: 15))!
+        entry.date = Calendar.current.date(from: DateComponents(year: 2025, month: 3, day: 15))! // swiftlint:disable:this force_unwrapping
         entry.isDiesel = true
         entry.isAdBlue = false
         entry.currentKm = 100_000

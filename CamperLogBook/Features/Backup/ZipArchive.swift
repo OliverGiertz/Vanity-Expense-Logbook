@@ -165,7 +165,7 @@ class ZipArchive {
         
         let archiveData = try Data(contentsOf: archiveURL)
         
-        guard let _ = try extractManifest(from: archiveData) else {
+        guard try extractManifest(from: archiveData) != nil else {
             throw ZipError.invalidArchiveFormat
         }
         
@@ -290,7 +290,7 @@ class ZipArchive {
     private static func createManifest(for directoryURL: URL, version: String) throws -> Data {
         let fileEnumerator = FileManager.default.enumerator(at: directoryURL, includingPropertiesForKeys: [.isRegularFileKey])
         var fileCount = 0
-        while fileEnumerator?.nextObject() as? URL != nil {
+        while fileEnumerator?.nextObject() is URL {
             fileCount += 1
         }
         let manifest = ArchiveManifest(
@@ -331,7 +331,7 @@ class ZipArchive {
     }
     
     private static func createArchiveFooter() -> Data {
-        return "VANITY_ARCHIVE_END".data(using: .utf8) ?? Data()
+        return Data("VANITY_ARCHIVE_END".utf8)
     }
     
     private static func extractFileEntries(from archiveData: Data) throws -> [FileEntry] {
@@ -359,6 +359,7 @@ class ZipArchive {
         let sourceSize = data.count
         let destinationSize = sourceSize + 1024
         var compressedData = Data(count: destinationSize)
+        // swiftlint:disable force_unwrapping
         let result = compressedData.withUnsafeMutableBytes { destPtr in
             data.withUnsafeBytes { srcPtr in
                 compression_encode_buffer(
@@ -371,6 +372,7 @@ class ZipArchive {
                 )
             }
         }
+        // swiftlint:enable force_unwrapping
         guard result > 0 else {
             throw ZipError.compressionFailed
         }
@@ -381,6 +383,7 @@ class ZipArchive {
     private static func decompressData(_ data: Data) throws -> Data {
         let estimatedSize = data.count * 5
         var decompressedData = Data(count: estimatedSize)
+        // swiftlint:disable force_unwrapping
         let result = decompressedData.withUnsafeMutableBytes { destPtr in
             data.withUnsafeBytes { srcPtr in
                 compression_decode_buffer(
@@ -393,6 +396,7 @@ class ZipArchive {
                 )
             }
         }
+        // swiftlint:enable force_unwrapping
         guard result > 0 else {
             throw ZipError.decompressionFailed
         }

@@ -6,7 +6,7 @@ import BackgroundTasks
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     private let autoBackupTaskIdentifier = "de.vanityontour.camperlogbook.autobackup"
     
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Registriere für Benachrichtigungen
         UNUserNotificationCenter.current().delegate = self
         
@@ -56,12 +56,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         let context = PersistenceController.shared.container.viewContext
         let backupManager = CloudBackupManager.shared
         backupManager.connect(to: context)
-        backupManager.createBackup { success, errorMessage in
-            if success {
+        Task {
+            do {
+                try await backupManager.createBackup()
                 print("Automatisches Backup erfolgreich erstellt")
                 completion(true)
-            } else {
-                print("Automatisches Backup fehlgeschlagen: \(errorMessage ?? "Unbekannter Fehler")")
+            } catch {
+                print("Automatisches Backup fehlgeschlagen: \(error.localizedDescription)")
                 completion(false)
             }
         }
@@ -70,7 +71,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     private func registerBackgroundTasks() {
         guard #available(iOS 13.0, *) else { return }
         BGTaskScheduler.shared.register(forTaskWithIdentifier: autoBackupTaskIdentifier, using: nil) { task in
-            self.handleAutoBackup(task: task as! BGAppRefreshTask)
+            guard let refreshTask = task as? BGAppRefreshTask else { return }
+            self.handleAutoBackup(task: refreshTask)
         }
     }
     

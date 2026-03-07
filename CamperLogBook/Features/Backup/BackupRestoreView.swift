@@ -33,7 +33,7 @@ struct BackupRestoreView: View {
     @State private var isSuccess = false
     @State private var showExportSheet = false
     @State private var showImportPicker = false
-    @State private var exportURL: URL? = nil
+    @State private var exportURL: URL?
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -151,19 +151,33 @@ struct BackupRestoreView: View {
     }
     
     private func createBackup() {
-        backupManager.createBackup { success, errorMessage in
-            alertTitle = success ? "Backup erstellt" : "Backup fehlgeschlagen"
-            alertMessage = success ? "Deine Daten wurden erfolgreich gesichert." : (errorMessage ?? "Unbekannter Fehler")
-            isSuccess = success
+        Task {
+            do {
+                try await backupManager.createBackup()
+                alertTitle = "Backup erstellt"
+                alertMessage = "Deine Daten wurden erfolgreich gesichert."
+                isSuccess = true
+            } catch {
+                alertTitle = "Backup fehlgeschlagen"
+                alertMessage = error.localizedDescription
+                isSuccess = false
+            }
             showResultAlert = true
         }
     }
-    
+
     private func restoreBackup() {
-        backupManager.restoreBackup { success, errorMessage in
-            alertTitle = success ? "Backup wiederhergestellt" : "Wiederherstellung fehlgeschlagen"
-            alertMessage = success ? "Deine Daten wurden erfolgreich wiederhergestellt." : (errorMessage ?? "Unbekannter Fehler")
-            isSuccess = success
+        Task {
+            do {
+                try await backupManager.restoreBackup()
+                alertTitle = "Backup wiederhergestellt"
+                alertMessage = "Deine Daten wurden erfolgreich wiederhergestellt."
+                isSuccess = true
+            } catch {
+                alertTitle = "Wiederherstellung fehlgeschlagen"
+                alertMessage = error.localizedDescription
+                isSuccess = false
+            }
             showResultAlert = true
         }
     }

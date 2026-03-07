@@ -105,14 +105,10 @@ struct DebugView: View {
                     Toggle("Backup Test aktivieren", isOn: $backupTestEnabled)
                     if backupTestEnabled {
                         Button("Backup erstellen (Cloud)") {
-                            CloudBackupManager.shared.createBackup { success, errorMessage in
-                                print(success ? "Cloud Backup erfolgreich erstellt" : "Cloud Backup fehlgeschlagen: \(errorMessage ?? "Unbekannter Fehler")")
-                            }
+                            Task { try? await CloudBackupManager.shared.createBackup() }
                         }
                         Button("Backup wiederherstellen (Cloud)") {
-                            CloudBackupManager.shared.restoreBackup { success, errorMessage in
-                                print(success ? "Cloud Backup erfolgreich wiederhergestellt" : "Cloud Backup Wiederherstellung fehlgeschlagen: \(errorMessage ?? "Unbekannter Fehler")")
-                            }
+                            Task { try? await CloudBackupManager.shared.restoreBackup() }
                         }
                     }
                 }

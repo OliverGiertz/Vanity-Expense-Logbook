@@ -1,20 +1,35 @@
 disabled_rules:
   - trailing_whitespace
   - line_length
+  - function_body_length
+  - type_body_length
+  - file_length
+  - implicit_optional_initialization
+  - multiple_closures_with_trailing_closure
+  - vertical_parameter_alignment
+  - nesting
 
 opt_in_rules:
-  - force_unwrap
+  - force_unwrapping
   - force_cast
-  - cyclomatic_complexity
+  - force_try
+  - empty_count
+  - for_where
+  - unused_closure_parameter
+  - unused_optional_binding
+  - prefer_type_checking
+  - non_optional_string_data_conversion
+
+identifier_name:
+  min_length: 1
+  max_length: 60
+
+cyclomatic_complexity:
+  warning: 25
+  error: 40
 
 excluded:
   - vendor/
   - fastlane/
   - Pods/
-
-# Xcode Build Phase Script (manuell in Xcode hinzufügen unter Target > Build Phases > + > New Run Script Phase):
-# if which swiftlint > /dev/null; then
-#   swiftlint
-# else
-#   echo "warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint"
-# fi
+  - CamperLogBookUITests/SnapshotHelper.swift

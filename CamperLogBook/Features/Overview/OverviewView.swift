@@ -141,7 +141,7 @@ struct OverviewView: View {
     private func calculateDaysPerGasBottle() -> Double? {
         let sortedAsc = gasEntries.sorted { $0.date < $1.date }
         guard sortedAsc.count >= 2 else { return nil }
-        let last = sortedAsc.last!
+        let last = sortedAsc[sortedAsc.count - 1]
         let secondLast = sortedAsc[sortedAsc.count - 2]
         let daysDiff = Calendar.current.dateComponents([.day], from: secondLast.date, to: last.date).day ?? 0
         guard last.bottleCount > 0 else { return nil }

@@ -215,27 +215,25 @@ struct BackupSettingsView: View {
     }
     
     private func createBackup() {
-        cloudBackup.createBackup { success, error in
-            DispatchQueue.main.async {
-                if success {
-                    showingBackupSuccessAlert = true
-                } else {
-                    errorMessage = error ?? "Unbekannter Fehler"
-                    showingErrorAlert = true
-                }
+        Task {
+            do {
+                try await cloudBackup.createBackup()
+                showingBackupSuccessAlert = true
+            } catch {
+                errorMessage = error.localizedDescription
+                showingErrorAlert = true
             }
         }
     }
-    
+
     private func restoreBackup() {
-        cloudBackup.restoreBackup { success, error in
-            DispatchQueue.main.async {
-                if success {
-                    showingRestoreSuccessAlert = true
-                } else {
-                    errorMessage = error ?? "Unbekannter Fehler"
-                    showingErrorAlert = true
-                }
+        Task {
+            do {
+                try await cloudBackup.restoreBackup()
+                showingRestoreSuccessAlert = true
+            } catch {
+                errorMessage = error.localizedDescription
+                showingErrorAlert = true
             }
         }
     }
