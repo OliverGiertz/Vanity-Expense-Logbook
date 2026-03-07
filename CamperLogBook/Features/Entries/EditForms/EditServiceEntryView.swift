@@ -59,7 +59,13 @@ struct EditServiceEntryView: View {
             }
             Section(header: Text("Art der Leistung")) {
                 Toggle("Versorgung", isOn: $isSupply)
+                    .onChange(of: isSupply) { _, _ in
+                        HapticFeedback.selectionChanged()
+                    }
                 Toggle("Entsorgung", isOn: $isDisposal)
+                    .onChange(of: isDisposal) { _, _ in
+                        HapticFeedback.selectionChanged()
+                    }
             }
             if isSupply {
                 Section(header: Text("Frischwasser")) {
@@ -122,7 +128,10 @@ struct EditServiceEntryView: View {
     }
 
     private func saveChanges() {
-        guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else { return }
+        guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else {
+            HapticFeedback.error()
+            return
+        }
         serviceEntry.date = date
         serviceEntry.isSupply = isSupply
         serviceEntry.isDisposal = isDisposal
@@ -152,19 +161,24 @@ struct EditServiceEntryView: View {
         }
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern EditServiceEntryView")
+            HapticFeedback.error()
         }
     }
 
     private func deleteEntry() {
+        HapticFeedback.impactMedium()
         viewContext.delete(serviceEntry)
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Löschen EditServiceEntryView")
+            HapticFeedback.error()
         }
     }
 }

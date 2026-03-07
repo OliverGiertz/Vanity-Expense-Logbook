@@ -95,7 +95,10 @@ struct EditOtherEntryView: View {
     }
 
     private func saveChanges() {
-        guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else { return }
+        guard let costValue = Double(cost.replacingOccurrences(of: ",", with: ".")) else {
+            HapticFeedback.error()
+            return
+        }
         otherEntry.date = date
         otherEntry.category = category
         otherEntry.details = details
@@ -109,21 +112,26 @@ struct EditOtherEntryView: View {
         }
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern EditOtherEntryView")
+            HapticFeedback.error()
             errorAlertMessage = "Fehler beim Speichern: \(error.localizedDescription)"
             showErrorAlert = true
         }
     }
 
     private func deleteEntry() {
+        HapticFeedback.impactMedium()
         viewContext.delete(otherEntry)
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Löschen EditOtherEntryView")
+            HapticFeedback.error()
             errorAlertMessage = "Fehler beim Löschen: \(error.localizedDescription)"
             showErrorAlert = true
         }

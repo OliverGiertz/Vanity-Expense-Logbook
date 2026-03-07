@@ -49,6 +49,7 @@ struct OtherEntryForm: View {
                     }
                     .onChange(of: selectedCategory) { newValue, _ in
                         showCustomCategoryField = (newValue == "Neu")
+                        HapticFeedback.selectionChanged()
                     }
                     if showCustomCategoryField {
                         TextField("Neue Kategorie eingeben", text: $customCategory)
@@ -104,7 +105,10 @@ struct OtherEntryForm: View {
 
     private func saveEntry() {
         let costText = cost.replacingOccurrences(of: ",", with: ".")
-        guard let costValue = Double(costText) else { return }
+        guard let costValue = Double(costText) else {
+            HapticFeedback.error()
+            return
+        }
 
         let categoryToSave: String
         if selectedCategory == "Neu" {
@@ -135,6 +139,7 @@ struct OtherEntryForm: View {
 
         do {
             try viewContext.save()
+            HapticFeedback.success()
             clearFields()
             withAnimation { showSuccessToast = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -142,6 +147,7 @@ struct OtherEntryForm: View {
             }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern OtherEntry in OtherEntryForm")
+            HapticFeedback.error()
             errorAlertMessage = "Fehler beim Speichern des Eintrags: \(error.localizedDescription)"
             showErrorAlert = true
         }

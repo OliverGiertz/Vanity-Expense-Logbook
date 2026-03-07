@@ -41,11 +41,14 @@ struct ImportExportView: View {
                         let summary = try CSVHelper.importCSVAllTypes(from: url, in: viewContext)
                         if summary.total > 0 {
                             importResultMessage = "\(summary.total) Einträge importiert (Tank: \(summary.fuel), Gas: \(summary.gas), Sonstige: \(summary.other))."
+                            HapticFeedback.success()
                         } else {
                             importResultMessage = "Keine Daten importiert. Prüfe: Trennzeichen (Tab/;/,), Spaltennamen inkl. 'entryType' und Datumsformat (dd.MM.yy)."
+                            HapticFeedback.error()
                         }
                     } catch {
                         importResultMessage = "Importfehler: \(error.localizedDescription)"
+                        HapticFeedback.error()
                     }
                     showingImportAlert = true
                 }
@@ -72,6 +75,7 @@ struct ImportExportView: View {
         let csv = CSVHelper.generateCSV(forTypes: types, in: viewContext)
         exportCSVString = csv
         showingActivityView = true
+        HapticFeedback.success()
     }
 }
 

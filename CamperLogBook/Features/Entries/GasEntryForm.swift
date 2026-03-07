@@ -87,6 +87,7 @@ struct GasEntryForm: View {
         guard let cost = Double(costPerBottle.replacingOccurrences(of: ",", with: ".")),
               let count = Int64(bottleCount) else {
             ErrorLogger.shared.log(message: "Eingabe ungültig in GasEntryForm")
+            HapticFeedback.error()
             errorAlertMessage = "Eingabe ungültig."
             showErrorAlert = true
             return
@@ -122,6 +123,7 @@ struct GasEntryForm: View {
         do {
             try viewContext.save()
             ErrorLogger.shared.log(message: "GasEntry erfolgreich gespeichert in GasEntryForm")
+            HapticFeedback.success()
             clearFields()
             withAnimation { showSuccessToast = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -129,6 +131,7 @@ struct GasEntryForm: View {
             }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern GasEntry in GasEntryForm")
+            HapticFeedback.error()
             errorAlertMessage = "Fehler beim Speichern des GasEntry: \(error.localizedDescription)"
             showErrorAlert = true
         }

@@ -81,6 +81,9 @@ struct FuelEntryForm: View {
                             Text(type).tag(type)
                         }
                     }
+                    .onChange(of: fuelType) { _, _ in
+                        HapticFeedback.selectionChanged()
+                    }
                 }
                 Section(header: Text("Fahrzeuginformationen")) {
                     TextField("Aktueller KM Stand", text: $currentKm)
@@ -185,7 +188,10 @@ struct FuelEntryForm: View {
     private func saveEntry() {
         errorMessage = nil
         let costText = totalCost.replacingOccurrences(of: ",", with: ".")
-        guard let costValue = Double(costText) else { return }
+        guard let costValue = Double(costText) else {
+            HapticFeedback.error()
+            return
+        }
 
         let chosenLocation: CLLocation
         if saveLocation {
@@ -247,6 +253,7 @@ struct FuelEntryForm: View {
         do {
             try viewContext.save()
             ErrorLogger.shared.log(message: "Eintrag erfolgreich gespeichert in FuelEntryForm")
+            HapticFeedback.success()
 
             let recentText: String? = {
                 if let c = consumptionPer100km, let s = formatDecimal2(c) {
@@ -277,6 +284,7 @@ struct FuelEntryForm: View {
             }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Fehler beim Speichern in FuelEntryForm")
+            HapticFeedback.error()
             errorAlertMessage = "Fehler beim Speichern: \(error.localizedDescription)"
             showErrorAlert = true
             isLoading = false

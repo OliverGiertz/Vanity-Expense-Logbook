@@ -113,7 +113,10 @@ struct EditGasEntryView: View {
 
     private func saveChanges() {
         guard let cost = Double(costPerBottle.replacingOccurrences(of: ",", with: ".")),
-              let count = Int64(bottleCount) else { return }
+              let count = Int64(bottleCount) else {
+            HapticFeedback.error()
+            return
+        }
         gasEntry.date = date
         gasEntry.costPerBottle = cost
         gasEntry.bottleCount = count
@@ -139,19 +142,24 @@ struct EditGasEntryView: View {
         }
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern EditGasEntryView")
+            HapticFeedback.error()
         }
     }
 
     private func deleteEntry() {
+        HapticFeedback.impactMedium()
         viewContext.delete(gasEntry)
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Löschen EditGasEntryView")
+            HapticFeedback.error()
         }
     }
 }
