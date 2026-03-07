@@ -14,7 +14,7 @@ Ziel:
 ## Technische Basis
 
 - Zentrale Engine: `OliverGiertz/vanity-dev-engine`
-- Reusable Workflow: `.github/workflows/repo-pipeline.yml@v1.4`
+- Reusable Workflow: `.github/workflows/repo-pipeline.yml@v1.5`
 - Consumer Workflow: `.github/workflows/use-vanity-dev-engine.yml`
 - Aktivierung per Repo-Variable: `USE_VANITY_DEV_ENGINE=true`
 
@@ -65,7 +65,7 @@ on:
 jobs:
   use-vanity-dev-engine:
     if: ${{ vars.USE_VANITY_DEV_ENGINE == 'true' }}
-    uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@v1.4
+    uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@v1.5
     with:
       repo_type: ios
       xcode_project: CamperLogBook.xcodeproj
@@ -81,6 +81,11 @@ jobs:
 - Bei Engine-Updates immer versioniert umstellen (`@v1.5`, `@v1.6`, ...), nie unversioniert.
 - Nach jedem Versionssprung einen Test-PR laufen lassen.
 - Wenn zentrale Pipeline stoert, kann temporaer `USE_VANITY_DEV_ENGINE=false` gesetzt werden (Fallback auf lokale Workflows, falls vorhanden).
+
+Hinweis fuer iOS-Repos:
+
+- Die zentrale CI laeuft standardmaessig auf `ubuntu-latest`.
+- Fuer echte iOS-Builds/Tests entweder `build_command` und `test_command` explizit setzen oder Xcode Cloud verwenden.
 
 ## Prompt-Vorlage fuer künftige Entwicklungsaufgaben
 
