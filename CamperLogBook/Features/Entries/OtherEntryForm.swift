@@ -81,7 +81,7 @@ struct OtherEntryForm: View {
                     receiptSource: $receiptSource
                 )
 
-                Button("Speichern") { saveEntry() }
+                SaveSection(title: "Speichern", action: saveEntry)
             }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -96,9 +96,7 @@ struct OtherEntryForm: View {
                 }
             }
         }
-        .sheet(item: $receiptSource) { _ in
-            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
+        .receiptPickerSheet(receiptSource: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
         .toast(isPresented: $showSuccessToast, title: "Eintrag gespeichert", subtitle: nil, systemImage: "checkmark.circle.fill", duration: 2.0, alignment: .bottom)
     }

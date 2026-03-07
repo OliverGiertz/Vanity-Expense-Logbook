@@ -156,11 +156,13 @@ struct LocationSection: View {
 struct SaveDeleteSection: View {
     var saveAction: () -> Void
     var deleteAction: () -> Void
+    var saveTitle: String = "Speichern"
+    var deleteTitle: String = "Eintrag löschen"
     var isLoading: Bool = false
 
     var body: some View {
         Section {
-            Button("Speichern") {
+            Button(saveTitle) {
                 saveAction()
             }
             .disabled(isLoading)
@@ -177,7 +179,29 @@ struct SaveDeleteSection: View {
             Button(role: .destructive) {
                 deleteAction()
             } label: {
-                Text("Eintrag löschen")
+                Text(deleteTitle)
+            }
+            .disabled(isLoading)
+        }
+    }
+}
+
+/// Standard save button section with optional progress indicator.
+struct SaveSection: View {
+    var title: String = "Speichern"
+    var action: () -> Void
+    var isLoading: Bool = false
+
+    var body: some View {
+        Section {
+            Button(action: action) {
+                HStack {
+                    Text(title)
+                    if isLoading {
+                        Spacer()
+                        ProgressView()
+                    }
+                }
             }
             .disabled(isLoading)
         }
@@ -225,5 +249,27 @@ struct ErrorAlertModifier: ViewModifier {
 extension View {
     func errorAlert(isPresented: Binding<Bool>, message: String, showMailView: Binding<Bool>) -> some View {
         modifier(ErrorAlertModifier(isPresented: isPresented, message: message, showMailView: showMailView))
+    }
+
+    func receiptPickerSheet(receiptSource: Binding<ReceiptSource?>, receiptImage: Binding<UIImage?>, pdfData: Binding<Data?>) -> some View {
+        sheet(item: receiptSource) { _ in
+            ReceiptPickerSheet(source: receiptSource, receiptImage: receiptImage, pdfData: pdfData)
+        }
+    }
+
+    func receiptDetailSheet(isPresented: Binding<Bool>, receiptImage: UIImage?, pdfData: Data?) -> some View {
+        sheet(isPresented: isPresented) {
+            NavigationView {
+                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
+            }
+        }
+    }
+
+    func locationPickerSheet(isPresented: Binding<Bool>, selectedCoordinate: Binding<CLLocationCoordinate2D?>, selectedAddress: Binding<String>) -> some View {
+        sheet(isPresented: isPresented) {
+            NavigationView {
+                LocationPickerView(selectedCoordinate: selectedCoordinate, selectedAddress: selectedAddress)
+            }
+        }
     }
 }

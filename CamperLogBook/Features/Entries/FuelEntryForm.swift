@@ -124,21 +124,12 @@ struct FuelEntryForm: View {
                     showingReceiptOptions: $showingReceiptOptions,
                     receiptSource: $receiptSource
                 )
-                Button(action: { isLoading = true; saveEntry() }) {
-                    HStack { Text("Speichern"); if isLoading { Spacer(); ProgressView() } }
-                }
-                .disabled(isLoading)
+                SaveSection(title: "Speichern", action: { isLoading = true; saveEntry() }, isLoading: isLoading)
             }
             .navigationTitle("Tankbeleg")
         }
-        .sheet(isPresented: $showLocationPicker) {
-            NavigationView {
-                LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
-            }
-        }
-        .sheet(item: $receiptSource) { _ in
-            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
+        .locationPickerSheet(isPresented: $showLocationPicker, selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
+        .receiptPickerSheet(receiptSource: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
         .toast(isPresented: $showSuccessToast, title: "Eintrag gespeichert", subtitle: successSubtitle, systemImage: "checkmark.circle.fill", duration: 2.4, alignment: .bottom)
     }

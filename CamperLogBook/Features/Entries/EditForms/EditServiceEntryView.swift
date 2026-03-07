@@ -100,31 +100,12 @@ struct EditServiceEntryView: View {
                 pdfData: pdfData,
                 showDetailAction: { showReceiptDetail = true }
             )
-            Button("Speichern") {
-                saveChanges()
-            }
-            Section {
-                Button(role: .destructive) {
-                    deleteEntry()
-                } label: {
-                    Text("Eintrag löschen")
-                }
-            }
+            SaveDeleteSection(saveAction: saveChanges, deleteAction: deleteEntry)
         }
         .navigationTitle("Ver-/Entsorgung bearbeiten")
-        .sheet(isPresented: $showLocationPicker) {
-            NavigationView {
-                LocationPickerView(selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
-            }
-        }
-        .sheet(item: $receiptSource) { _ in
-            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
-        .sheet(isPresented: $showReceiptDetail) {
-            NavigationView {
-                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
-            }
-        }
+        .locationPickerSheet(isPresented: $showLocationPicker, selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
+        .receiptPickerSheet(receiptSource: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+        .receiptDetailSheet(isPresented: $showReceiptDetail, receiptImage: receiptImage, pdfData: pdfData)
     }
 
     private func saveChanges() {

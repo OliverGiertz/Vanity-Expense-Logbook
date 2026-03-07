@@ -13,16 +13,12 @@ struct EditCategoryView: View {
             Section(header: Text("Kategorie bearbeiten")) {
                 TextField("Kategorie Name", text: $name)
             }
-            Button("Speichern") {
-                saveChanges()
-            }
-            Section {
-                Button(role: .destructive) {
-                    deleteCategory()
-                } label: {
-                    Text("Kategorie löschen")
-                }
-            }
+            SaveDeleteSection(
+                saveAction: saveChanges,
+                deleteAction: deleteCategory,
+                saveTitle: "Speichern",
+                deleteTitle: "Kategorie löschen"
+            )
         }
         .navigationTitle("Kategorie")
         .onAppear {
