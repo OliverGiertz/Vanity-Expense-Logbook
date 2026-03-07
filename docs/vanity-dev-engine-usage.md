@@ -25,9 +25,14 @@ Branch Protection verlangt:
 - `use-vanity-dev-engine / ci`
 - `use-vanity-dev-engine / security-scan`
 - `use-vanity-dev-engine / ai-review`
-- 1 PR Approval
+- kein separates PR-Approval (Solo-Modus)
 - Conversation Resolution
 - Up-to-date Branch (`strict`)
+
+## Pflicht-Hinweis fuer Issues
+
+Jeder PR muss im PR-Body ein Closing-Keyword enthalten, z. B. `Fixes #123`.
+Nur dann kann der Merge-Workflow das verknuepfte Issue kommentieren und danach automatisch schliessen.
 
 ## Standardablauf fuer Weiterentwicklungen
 
