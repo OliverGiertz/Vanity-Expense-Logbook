@@ -9,5 +9,7 @@ on:
 jobs:
   use-vanity-dev-engine:
     if: ${{ vars.USE_VANITY_DEV_ENGINE == 'true' }}
-    uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@v1
+    uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@v1.1
     secrets: inherit
+    with:
+      repo_type: ios
