@@ -34,6 +34,12 @@ Branch Protection verlangt:
 Jeder PR muss im PR-Body ein Closing-Keyword enthalten, z. B. `Fixes #123`.
 Nur dann kann der Merge-Workflow das verknuepfte Issue kommentieren und danach automatisch schliessen.
 
+## Pflicht-Hinweis fuer Versionierung
+
+Jede Aenderung braucht eine neue App-Version.
+Vor Merge muss `MARKETING_VERSION` in `CamperLogBook.xcodeproj/project.pbxproj` erhoeht werden.
+Der Workflow `version-guard` blockiert PRs ohne Versionsbump.
+
 ## Standardablauf fuer Weiterentwicklungen
 
 1. Feature-Branch erstellen.

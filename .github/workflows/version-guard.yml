@@ -1,0 +1,44 @@
+name: version-guard
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  version-guard:
+    name: version-guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare MARKETING_VERSION with base branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin "${{ github.base_ref }}" --depth=1
+
+          BASE_FILE="$(mktemp)"
+          git show "origin/${{ github.base_ref }}:CamperLogBook.xcodeproj/project.pbxproj" > "$BASE_FILE"
+
+          base_version=$(grep -m1 'MARKETING_VERSION = ' "$BASE_FILE" | sed -E 's/.*MARKETING_VERSION = ([^;]+);/\1/')
+          head_version=$(grep -m1 'MARKETING_VERSION = ' CamperLogBook.xcodeproj/project.pbxproj | sed -E 's/.*MARKETING_VERSION = ([^;]+);/\1/')
+
+          echo "Base MARKETING_VERSION: $base_version"
+          echo "Head MARKETING_VERSION: $head_version"
+
+          if [ -z "$base_version" ] || [ -z "$head_version" ]; then
+            echo "Could not read MARKETING_VERSION from project file."
+            exit 1
+          fi
+
+          if [ "$base_version" = "$head_version" ]; then
+            echo "Version guard failed: MARKETING_VERSION was not bumped."
+            echo "Every merged change must increase app version."
+            exit 1
+          fi
+
+          echo "Version guard passed."
