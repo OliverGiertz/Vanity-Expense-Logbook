@@ -34,18 +34,23 @@ struct EditCategoryView: View {
         expenseCategory.name = name.trimmingCharacters(in: .whitespaces)
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
+            HapticFeedback.error()
             print("Error saving category: \(error)")
         }
     }
     
     private func deleteCategory() {
+        HapticFeedback.impactMedium()
         viewContext.delete(expenseCategory)
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
+            HapticFeedback.error()
             print("Error deleting category: \(error)")
         }
     }

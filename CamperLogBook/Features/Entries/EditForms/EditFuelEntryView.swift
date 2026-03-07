@@ -68,6 +68,9 @@ struct EditFuelEntryView: View {
                         Text(type).tag(type)
                     }
                 }
+                .onChange(of: fuelType) { _, _ in
+                    HapticFeedback.selectionChanged()
+                }
             }
             Section(header: Text("Fahrzeuginformationen")) {
                 TextField("Aktueller KM Stand", text: $currentKm)
@@ -131,7 +134,10 @@ struct EditFuelEntryView: View {
 
     private func saveChanges() {
         guard let costValue = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")),
-              let currentKmValue = Int64(currentKm) else { return }
+              let currentKmValue = Int64(currentKm) else {
+            HapticFeedback.error()
+            return
+        }
         fuelEntry.date = date
         fuelEntry.fuelType = fuelType
         fuelEntry.isDiesel = (fuelType == "Diesel")
@@ -163,19 +169,24 @@ struct EditFuelEntryView: View {
         }
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern EditFuelEntryView")
+            HapticFeedback.error()
         }
     }
 
     private func deleteEntry() {
+        HapticFeedback.impactMedium()
         viewContext.delete(fuelEntry)
         do {
             try viewContext.save()
+            HapticFeedback.success()
             dismiss()
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Löschen EditFuelEntryView")
+            HapticFeedback.error()
         }
     }
 }

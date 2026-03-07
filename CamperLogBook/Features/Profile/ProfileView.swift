@@ -73,6 +73,9 @@ struct ProfileView: View {
                 
                 Section(header: Text("Startseiten-Einstellungen")) {
                     Toggle("Startseite beim App-Start anzeigen", isOn: $showStartInfo)
+                        .onChange(of: showStartInfo) { _, _ in
+                            HapticFeedback.selectionChanged()
+                        }
                 }
                 
                 Section(header: Text("Datenimport/-export")) {
@@ -125,7 +128,9 @@ struct ProfileView: View {
         }
         do {
             try viewContext.save()
+            HapticFeedback.success()
         } catch {
+            HapticFeedback.error()
             print("Error saving profile: \(error)")
         }
     }
@@ -139,16 +144,21 @@ struct ProfileView: View {
         do {
             try viewContext.save()
             newCategoryName = ""
+            HapticFeedback.success()
         } catch {
+            HapticFeedback.error()
             print("Error adding category: \(error)")
         }
     }
     
     private func deleteCategories(offsets: IndexSet) {
+        HapticFeedback.impactMedium()
         offsets.map { categories[$0] }.forEach(viewContext.delete)
         do {
             try viewContext.save()
+            HapticFeedback.success()
         } catch {
+            HapticFeedback.error()
             print("Error deleting categories: \(error)")
         }
     }

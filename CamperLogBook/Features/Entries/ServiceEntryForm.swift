@@ -40,7 +40,13 @@ struct ServiceEntryForm: View {
                 }
                 Section(header: Text("Art der Leistung")) {
                     Toggle("Versorgung", isOn: $isSupply)
+                        .onChange(of: isSupply) { _, _ in
+                            HapticFeedback.selectionChanged()
+                        }
                     Toggle("Entsorgung", isOn: $isDisposal)
+                        .onChange(of: isDisposal) { _, _ in
+                            HapticFeedback.selectionChanged()
+                        }
                 }
                 if isSupply {
                     Section(header: Text("Frischwasser")) {
@@ -96,6 +102,7 @@ struct ServiceEntryForm: View {
         let costText = cost.replacingOccurrences(of: ",", with: ".")
         guard let costValue = Double(costText) else {
             ErrorLogger.shared.log(message: "Kostenkonvertierung fehlgeschlagen in ServiceEntryForm")
+            HapticFeedback.error()
             errorAlertMessage = "Kosten ungültig."
             showErrorAlert = true
             return
@@ -135,12 +142,14 @@ struct ServiceEntryForm: View {
         }
         do {
             try viewContext.save()
+            HapticFeedback.success()
             withAnimation { showSuccessToast = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 dismiss()
             }
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Speichern ServiceEntry in ServiceEntryForm")
+            HapticFeedback.error()
             errorAlertMessage = "Fehler beim Speichern: \(error.localizedDescription)"
             showErrorAlert = true
         }
