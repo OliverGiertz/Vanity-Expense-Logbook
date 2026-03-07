@@ -73,20 +73,12 @@ struct ServiceEntryForm: View {
                     showingReceiptOptions: $showingReceiptOptions,
                     receiptSource: $receiptSource
                 )
-                Button("Speichern") {
-                    saveEntry()
-                }
+                SaveSection(title: "Speichern", action: saveEntry)
             }
             .navigationTitle("Ver-/Entsorgung")
         }
-        .sheet(isPresented: $showLocationPicker) {
-            NavigationView {
-                LocationPickerView(selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
-            }
-        }
-        .sheet(item: $receiptSource) { _ in
-            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
+        .locationPickerSheet(isPresented: $showLocationPicker, selectedCoordinate: $selectedLocation, selectedAddress: $manualAddress)
+        .receiptPickerSheet(receiptSource: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
         .toast(
             isPresented: $showSuccessToast,

@@ -71,26 +71,11 @@ struct EditOtherEntryView: View {
                 pdfData: pdfData,
                 showDetailAction: { showReceiptDetail = true }
             )
-            Button("Speichern") {
-                saveChanges()
-            }
-            Section {
-                Button(role: .destructive) {
-                    deleteEntry()
-                } label: {
-                    Text("Eintrag löschen")
-                }
-            }
+            SaveDeleteSection(saveAction: saveChanges, deleteAction: deleteEntry)
         }
         .navigationTitle("Sonstiger Beleg bearbeiten")
-        .sheet(item: $receiptSource) { _ in
-            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
-        .sheet(isPresented: $showReceiptDetail) {
-            NavigationView {
-                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
-            }
-        }
+        .receiptPickerSheet(receiptSource: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+        .receiptDetailSheet(isPresented: $showReceiptDetail, receiptImage: receiptImage, pdfData: pdfData)
         .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
     }
 

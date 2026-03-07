@@ -105,31 +105,12 @@ struct EditFuelEntryView: View {
                 pdfData: pdfData,
                 showDetailAction: { showReceiptDetail = true }
             )
-            Button("Änderungen speichern") {
-                saveChanges()
-            }
-            Section {
-                Button(role: .destructive) {
-                    deleteEntry()
-                } label: {
-                    Text("Eintrag löschen")
-                }
-            }
+            SaveDeleteSection(saveAction: saveChanges, deleteAction: deleteEntry, saveTitle: "Änderungen speichern")
         }
         .navigationTitle("Eintrag bearbeiten")
-        .sheet(isPresented: $showLocationPicker) {
-            NavigationView {
-                LocationPickerView(selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
-            }
-        }
-        .sheet(item: $receiptSource) { _ in
-            ReceiptPickerSheet(source: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
-        }
-        .sheet(isPresented: $showReceiptDetail) {
-            NavigationView {
-                ReceiptDetailView(receiptImage: receiptImage, pdfData: pdfData)
-            }
-        }
+        .locationPickerSheet(isPresented: $showLocationPicker, selectedCoordinate: $manualLocation, selectedAddress: $manualAddress)
+        .receiptPickerSheet(receiptSource: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
+        .receiptDetailSheet(isPresented: $showReceiptDetail, receiptImage: receiptImage, pdfData: pdfData)
     }
 
     private func saveChanges() {
