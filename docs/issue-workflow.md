@@ -1,5 +1,10 @@
 # Issue Workflow (Merge Automation)
 
+## Pflicht-Hinweis (nicht vergessen)
+
+Jeder PR muss im PR-Body mindestens ein Closing-Keyword enthalten, z. B. `Fixes #123`.
+Ohne diesen Hinweis kann die Automation das Issue nicht automatisch kommentieren und nicht schliessen.
+
 ## Ziel
 
 Bei jeder umgesetzten Aufgabe soll im verknuepften Issue ein Abschluss-Kommentar mit Aenderungen und Pruefstatus stehen. Danach wird das Issue automatisch geschlossen.
