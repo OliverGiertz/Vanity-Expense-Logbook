@@ -225,10 +225,10 @@
 				};
 			};
 			buildConfigurationList = A79EA85C2D58A057001C1D0B /* Build configuration list for PBXProject "CamperLogBook" */;
-			developmentRegion = en;
+			developmentRegion = de;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				de,
 				Base,
 			);
 			mainGroup = A79EA8582D58A057001C1D0B;
