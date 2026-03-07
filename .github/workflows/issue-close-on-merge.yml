@@ -1,0 +1,91 @@
+name: issue-close-on-merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-linked-issues:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
+      checks: read
+    steps:
+      - name: Comment summary and close linked issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request;
+            const prNumber = pr.number;
+            const prBody = pr.body || "";
+
+            const keywordRegex = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi;
+            const issueNumbers = new Set();
+            let m;
+            while ((m = keywordRegex.exec(prBody)) !== null) {
+              issueNumbers.add(Number(m[1]));
+            }
+
+            if (issueNumbers.size === 0) {
+              core.info("No linked issues found via closing keywords in PR body.");
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: prNumber,
+              per_page: 100
+            });
+
+            const fileLines = files.slice(0, 30).map(f => `- \`${f.filename}\``);
+            const moreFiles = files.length > 30 ? `\n- ... and ${files.length - 30} more file(s)` : "";
+
+            const checksResp = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: pr.head.sha,
+              per_page: 100
+            });
+
+            const relevantCheckNames = [
+              "use-vanity-dev-engine / ci",
+              "use-vanity-dev-engine / security-scan",
+              "use-vanity-dev-engine / ai-review"
+            ];
+
+            const checkMap = new Map();
+            for (const run of checksResp.data.check_runs) {
+              if (!relevantCheckNames.includes(run.name)) continue;
+              checkMap.set(run.name, run.conclusion || run.status || "unknown");
+            }
+
+            const checkLines = relevantCheckNames.map(name => {
+              const value = checkMap.get(name) || "not-found";
+              return `- ${name}: ${String(value).toUpperCase()}`;
+            });
+
+            const summary = [
+              `Issue automatisch geschlossen nach Merge von PR #${prNumber}.`,
+              "",
+              "Aenderungen:",
+              ...fileLines,
+              moreFiles,
+              "",
+              "Pruefungsergebnisse:",
+              ...checkLines,
+              "",
+              `PR: ${pr.html_url}`,
+              `Merge Commit: ${pr.merge_commit_sha || "n/a"}`
+            ].filter(Boolean).join("\n");
+
+            for (const issue_number of issueNumbers) {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body: summary });
+              await github.rest.issues.update({ owner, repo, issue_number, state: "closed" });
+              core.info(`Commented and closed issue #${issue_number}`);
+            }
