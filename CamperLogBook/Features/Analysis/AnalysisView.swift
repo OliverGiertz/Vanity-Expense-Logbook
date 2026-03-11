@@ -15,8 +15,20 @@ struct AnalysisData: Identifiable {
     var type: String    // z. B. "Tankbeleg", "Gaskosten", "Ver-/Entsorgung", "Sonstige"
 }
 
+private static let analysisPeriodFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateStyle = .short
+    return f
+}()
+
 struct AnalysisView: View {
     @Environment(\.managedObjectContext) private var viewContext
+
+    @FetchRequest(
+        entity: ExpenseCategory.entity(),
+        sortDescriptors: [NSSortDescriptor(keyPath: \ExpenseCategory.name, ascending: true)]
+    ) private var categories: FetchedResults<ExpenseCategory>
+
     @State private var selectedChartType: ChartType = .bar
     @State private var data: [AnalysisData] = []
     @State private var isLoading: Bool = false
@@ -34,31 +46,30 @@ struct AnalysisView: View {
         return formatter
     }()
 
-    // Zeitraum-Auswahl: Standard = aktuelles Jahr
+    @State private var periodFilter: PeriodFilter = .year
+    @State private var showDateRangePicker = false
     @State private var startDate: Date = {
-        let currentYear = Calendar.current.component(.year, from: Date())
-        return Calendar.current.date(from: DateComponents(year: currentYear, month: 1, day: 1)) ?? Date()
+        let year = Calendar.current.component(.year, from: Date())
+        return Calendar.current.date(from: DateComponents(year: year, month: 1, day: 1)) ?? Date()
     }()
     @State private var endDate: Date = {
-        let currentYear = Calendar.current.component(.year, from: Date())
-        return Calendar.current.date(from: DateComponents(year: currentYear, month: 12, day: 31)) ?? Date()
+        let year = Calendar.current.component(.year, from: Date())
+        return Calendar.current.date(from: DateComponents(year: year, month: 12, day: 31)) ?? Date()
     }()
 
-    // Auswahl der Kostentypen; Standard: alle ausgewählt
     @State private var selectedCostTypes: Set<String> = ["Tankbeleg", "Gaskosten", "Ver-/Entsorgung", "Sonstige"]
+    @State private var selectedCategory: String? = nil
+
+    private var periodLabel: String {
+        if periodFilter == .custom {
+            return "\(analysisPeriodFormatter.string(from: startDate)) – \(analysisPeriodFormatter.string(from: endDate))"
+        }
+        return periodFilter.rawValue
+    }
 
     var body: some View {
         NavigationView {
-            VStack {
-                // Zeitraum-Auswahl
-                HStack {
-                    DatePicker("Von", selection: $startDate, displayedComponents: .date)
-                    DatePicker("Bis", selection: $endDate, displayedComponents: .date)
-                }
-                .padding(.horizontal)
-                .onChange(of: startDate) { _ in scheduleLoadData() }
-                .onChange(of: endDate) { _ in scheduleLoadData() }
-
+            VStack(spacing: 0) {
                 // Kostentyp-Auswahl
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
@@ -70,6 +81,7 @@ struct AnalysisView: View {
                                         selectedCostTypes.insert(type)
                                     } else {
                                         selectedCostTypes.remove(type)
+                                        if type == "Sonstige" { selectedCategory = nil }
                                     }
                                 }
                             ))
@@ -78,7 +90,35 @@ struct AnalysisView: View {
                     }
                     .padding(.horizontal)
                 }
-                .padding(.vertical, 5)
+                .padding(.vertical, 6)
+
+                // Kategorie-Subfilter (nur wenn Sonstige aktiv und Kategorien vorhanden)
+                if selectedCostTypes.contains("Sonstige") && !categories.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            Button {
+                                selectedCategory = nil
+                            } label: {
+                                Label("Alle", systemImage: selectedCategory == nil ? "checkmark" : "")
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(selectedCategory == nil ? .accentColor : .secondary)
+
+                            ForEach(categories, id: \.objectID) { cat in
+                                let name = cat.name ?? ""
+                                Button {
+                                    selectedCategory = (selectedCategory == name) ? nil : name
+                                } label: {
+                                    Label(name, systemImage: selectedCategory == name ? "checkmark" : "")
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(selectedCategory == name ? .accentColor : .secondary)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.vertical, 4)
+                }
 
                 Picker("Diagrammtyp", selection: $selectedChartType) {
                     ForEach(ChartType.allCases) { type in
@@ -123,6 +163,41 @@ struct AnalysisView: View {
                 Spacer()
             }
             .navigationTitle("Auswertung")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Menu {
+                        Picker("Zeitraum", selection: $periodFilter) {
+                            ForEach(PeriodFilter.allCases) { p in
+                                Text(p.rawValue).tag(p)
+                            }
+                        }
+                        if periodFilter == .custom {
+                            Button {
+                                showDateRangePicker = true
+                            } label: {
+                                Label(periodLabel, systemImage: "calendar.badge.clock")
+                            }
+                        }
+                    } label: {
+                        Label(
+                            periodFilter == .custom ? "Datum" : periodFilter.rawValue,
+                            systemImage: periodFilter != .all ? "calendar.badge.checkmark" : "calendar"
+                        )
+                    }
+                    .onChange(of: periodFilter) { _, newValue in
+                        applyPeriodPreset(newValue)
+                        if newValue == .custom { showDateRangePicker = true }
+                    }
+                }
+            }
+            .sheet(isPresented: $showDateRangePicker) {
+                CustomDateRangeSheet(startDate: $startDate, endDate: $endDate)
+            }
+            .onChange(of: showDateRangePicker) { _, isShowing in
+                if !isShowing && periodFilter == .custom { scheduleLoadData() }
+            }
+            .onChange(of: selectedCostTypes) { _, _ in scheduleLoadData() }
+            .onChange(of: selectedCategory) { _, _ in scheduleLoadData() }
             .onAppear { scheduleLoadData() }
             .onDisappear {
                 loadTask?.cancel()
@@ -131,12 +206,39 @@ struct AnalysisView: View {
         }
     }
 
+    private func applyPeriodPreset(_ period: PeriodFilter) {
+        guard period != .custom else { return }
+        let cal = Calendar.current
+        let now = Date()
+        switch period {
+        case .all:
+            startDate = cal.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? now
+            endDate = now
+        case .month:
+            startDate = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
+            endDate = now
+        case .quarter:
+            let month = cal.component(.month, from: now)
+            let qStart = ((month - 1) / 3) * 3 + 1
+            startDate = cal.date(from: DateComponents(year: cal.component(.year, from: now), month: qStart, day: 1)) ?? now
+            endDate = now
+        case .year:
+            let year = cal.component(.year, from: now)
+            startDate = cal.date(from: DateComponents(year: year, month: 1, day: 1)) ?? now
+            endDate = cal.date(from: DateComponents(year: year, month: 12, day: 31)) ?? now
+        case .custom:
+            break
+        }
+        scheduleLoadData()
+    }
+
     private func scheduleLoadData() {
         loadTask?.cancel()
         isLoading = true
 
         let start = startDate
         let end = endDate
+        let category = selectedCategory
 
         loadTask = Task {
             let context = PersistenceController.shared.container.newBackgroundContext()
@@ -149,7 +251,7 @@ struct AnalysisView: View {
                     let fuel = try fetchFuelData(in: context, start: start, end: end)
                     let gas = try fetchGasData(in: context, start: start, end: end)
                     let service = try fetchServiceData(in: context, start: start, end: end)
-                    let other = try fetchOtherData(in: context, start: start, end: end)
+                    let other = try fetchOtherData(in: context, start: start, end: end, category: category)
 
                     merge(type: "Tankbeleg", values: fuel, into: &tempData)
                     merge(type: "Gaskosten", values: gas, into: &tempData)
@@ -212,9 +314,13 @@ struct AnalysisView: View {
         }
     }
 
-    private func fetchOtherData(in context: NSManagedObjectContext, start: Date, end: Date) throws -> [String: Double] {
+    private func fetchOtherData(in context: NSManagedObjectContext, start: Date, end: Date, category: String?) throws -> [String: Double] {
         let request = NSFetchRequest<NSDictionary>(entityName: "OtherEntry")
-        request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+        if let cat = category {
+            request.predicate = NSPredicate(format: "date >= %@ AND date <= %@ AND category == %@", start as NSDate, end as NSDate, cat)
+        } else {
+            request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as NSDate, end as NSDate)
+        }
         request.resultType = .dictionaryResultType
         request.propertiesToFetch = ["date", "cost"]
         let rows = try context.fetch(request)
