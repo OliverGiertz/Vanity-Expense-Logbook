@@ -176,6 +176,12 @@ private let rowDateFormatter: DateFormatter = {
     return f
 }()
 
+private let periodLabelFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateStyle = .short
+    return f
+}()
+
 struct ExpenseListRow: View {
     let entry: AnyExpenseEntry
 
@@ -279,9 +285,7 @@ struct ExpenseListView: View {
 
     private var periodLabel: String {
         if periodFilter == .custom {
-            let f = DateFormatter()
-            f.dateStyle = .short
-            return "\(f.string(from: customStartDate)) – \(f.string(from: customEndDate))"
+            return "\(periodLabelFormatter.string(from: customStartDate)) – \(periodLabelFormatter.string(from: customEndDate))"
         }
         return periodFilter.rawValue
     }
@@ -310,6 +314,9 @@ struct ExpenseListView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Ausgaben")
+            .onChange(of: typeFilter) { _, _ in
+                selectedCategory = nil
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Menu {
@@ -339,9 +346,6 @@ struct ExpenseListView: View {
                             ForEach(EntryTypeFilter.allCases) { t in
                                 Text(t.rawValue).tag(t)
                             }
-                        }
-                        .onChange(of: typeFilter) { _, _ in
-                            selectedCategory = nil
                         }
                         if typeFilter == .other || typeFilter == .all, !categories.isEmpty {
                             Divider()
