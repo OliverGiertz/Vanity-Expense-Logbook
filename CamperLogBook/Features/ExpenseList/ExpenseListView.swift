@@ -93,7 +93,8 @@ enum AnyExpenseEntry: Identifiable {
     var title: String {
         switch self {
         case .fuel(let e):
-            return e.fuelType.isEmpty ? "Tankbeleg" : e.fuelType
+            let fuelType = e.fuelType ?? ""
+            return fuelType.isEmpty ? "Tankbeleg" : fuelType
         case .gas:
             return "Gas"
         case .service(let e):
