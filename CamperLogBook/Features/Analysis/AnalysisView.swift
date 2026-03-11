@@ -15,12 +15,6 @@ struct AnalysisData: Identifiable {
     var type: String    // z. B. "Tankbeleg", "Gaskosten", "Ver-/Entsorgung", "Sonstige"
 }
 
-private static let analysisPeriodFormatter: DateFormatter = {
-    let f = DateFormatter()
-    f.dateStyle = .short
-    return f
-}()
-
 struct AnalysisView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
@@ -33,6 +27,12 @@ struct AnalysisView: View {
     @State private var data: [AnalysisData] = []
     @State private var isLoading: Bool = false
     @State private var loadTask: Task<Void, Never>?
+
+    private static let periodDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        return f
+    }()
 
     private static let monthKeyFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -62,7 +62,7 @@ struct AnalysisView: View {
 
     private var periodLabel: String {
         if periodFilter == .custom {
-            return "\(analysisPeriodFormatter.string(from: startDate)) – \(analysisPeriodFormatter.string(from: endDate))"
+            return "\(Self.periodDateFormatter.string(from: startDate)) – \(Self.periodDateFormatter.string(from: endDate))"
         }
         return periodFilter.rawValue
     }
