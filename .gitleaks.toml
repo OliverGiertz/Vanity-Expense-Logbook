@@ -1,0 +1,14 @@
+# Gitleaks configuration – allowlist for known false positives
+# See: https://github.com/gitleaks/gitleaks?tab=readme-ov-file#configuration
+
+[allowlist]
+  description = "Known false positives from documentation and build artifacts"
+  # Suppress example/placeholder credentials found in non-source files
+  regexes = [
+    '''cafebabe:deadbeef''',
+    '''8ae31cacf141669ddfb5da''',
+  ]
+  paths = [
+    '''fastlane/''',
+    '''\.git/''',
+  ]

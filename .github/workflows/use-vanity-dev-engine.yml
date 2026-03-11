@@ -6,9 +6,16 @@ on:
   push:
     branches: [main, develop, "release/**", "fix/**", "feature/**"]
 
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+  issues: write
+
 jobs:
   use-vanity-dev-engine:
     if: ${{ vars.USE_VANITY_DEV_ENGINE == 'true' }}
-    uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@4628673afdc1a2fa9fed7737b34713d04be4489a
+    uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@aa2b6b7b4ae196bea1563bdc0f86a9e86ea85041 # v1.9
+    secrets: inherit
     with:
       repo_type: ios
