@@ -15,7 +15,7 @@ permissions:
 jobs:
   use-vanity-dev-engine:
     if: ${{ vars.USE_VANITY_DEV_ENGINE == 'true' }}
-    uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@967788e045a64c2bf5ee6be870de5386d8e49499 # v1.7
+    uses: OliverGiertz/vanity-dev-engine/.github/workflows/repo-pipeline.yml@de75e57c5e74f0fb2e0d477756f77a7cbc1f9ffb # v1.8
     secrets: inherit
     with:
       repo_type: ios
