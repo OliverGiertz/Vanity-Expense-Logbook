@@ -13,6 +13,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("Eintrag", systemImage: "plus.circle")
                 }
+            ExpenseListView()
+                .tabItem {
+                    Label("Ausgaben", systemImage: "list.bullet.rectangle")
+                }
             AnalysisView()
                 .tabItem {
                     Label("Auswertung", systemImage: "chart.bar")
