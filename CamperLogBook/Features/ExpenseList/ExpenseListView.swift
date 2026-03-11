@@ -17,22 +17,48 @@ enum PeriodFilter: String, CaseIterable, Identifiable {
     case month   = "Dieser Monat"
     case quarter = "Quartal"
     case year    = "Dieses Jahr"
+    case custom  = "Benutzerdefiniert"
     var id: String { rawValue }
 
-    var startDate: Date? {
+    func startDate(customStart: Date) -> Date? {
         let cal = Calendar.current
         let now = Date()
         switch self {
-        case .all:
-            return nil
-        case .month:
-            return cal.date(from: cal.dateComponents([.year, .month], from: now))
+        case .all:     return nil
+        case .custom:  return customStart
+        case .month:   return cal.date(from: cal.dateComponents([.year, .month], from: now))
         case .quarter:
             let month = cal.component(.month, from: now)
             let quarterStartMonth = ((month - 1) / 3) * 3 + 1
             return cal.date(from: DateComponents(year: cal.component(.year, from: now), month: quarterStartMonth, day: 1))
         case .year:
             return cal.date(from: DateComponents(year: cal.component(.year, from: now), month: 1, day: 1))
+        }
+    }
+}
+
+// MARK: - Custom Date Range Sheet
+
+struct CustomDateRangeSheet: View {
+    @Binding var startDate: Date
+    @Binding var endDate: Date
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Zeitraum")) {
+                    DatePicker("Von", selection: $startDate, displayedComponents: .date)
+                    DatePicker("Bis", selection: $endDate, in: startDate..., displayedComponents: .date)
+                }
+            }
+            .navigationTitle("Datumsbereich")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") { dismiss() }
+                }
+            }
         }
     }
 }
@@ -121,15 +147,6 @@ enum AnyExpenseEntry: Identifiable {
         }
     }
 
-    var typeFilter: EntryTypeFilter {
-        switch self {
-        case .fuel:    return .fuel
-        case .gas:     return .gas
-        case .service: return .service
-        case .other:   return .other
-        }
-    }
-
     func delete(in context: NSManagedObjectContext) throws {
         switch self {
         case .fuel(let e):    context.delete(e)
@@ -214,24 +231,59 @@ struct ExpenseListView: View {
         sortDescriptors: [NSSortDescriptor(keyPath: \OtherEntry.date, ascending: false)]
     ) private var otherEntries: FetchedResults<OtherEntry>
 
+    @FetchRequest(
+        entity: ExpenseCategory.entity(),
+        sortDescriptors: [NSSortDescriptor(keyPath: \ExpenseCategory.name, ascending: true)]
+    ) private var categories: FetchedResults<ExpenseCategory>
+
     @State private var typeFilter: EntryTypeFilter = .all
     @State private var periodFilter: PeriodFilter = .all
+    @State private var selectedCategory: String? = nil
+    @State private var customStartDate: Date = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+    @State private var customEndDate: Date = Date()
+    @State private var showDateRangePicker = false
     @State private var pendingDelete: AnyExpenseEntry? = nil
 
     private var filteredEntries: [AnyExpenseEntry] {
         var all: [AnyExpenseEntry] = []
+
         if typeFilter == .all || typeFilter == .fuel    { all += fuelEntries.map    { .fuel($0) } }
         if typeFilter == .all || typeFilter == .gas     { all += gasEntries.map     { .gas($0) } }
         if typeFilter == .all || typeFilter == .service { all += serviceEntries.map { .service($0) } }
-        if typeFilter == .all || typeFilter == .other   { all += otherEntries.map   { .other($0) } }
-        if let start = periodFilter.startDate {
-            all = all.filter { $0.date >= start }
+        if typeFilter == .all || typeFilter == .other {
+            let filtered = otherEntries.filter { entry in
+                guard let cat = selectedCategory else { return true }
+                return entry.category == cat
+            }
+            all += filtered.map { .other($0) }
         }
+
+        switch periodFilter {
+        case .all:
+            break
+        case .custom:
+            let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: customEndDate) ?? customEndDate
+            all = all.filter { $0.date >= customStartDate && $0.date < endOfDay }
+        default:
+            if let start = periodFilter.startDate(customStart: customStartDate) {
+                all = all.filter { $0.date >= start }
+            }
+        }
+
         return all.sorted { $0.date > $1.date }
     }
 
     private var isFiltered: Bool {
-        typeFilter != .all || periodFilter != .all
+        typeFilter != .all || periodFilter != .all || selectedCategory != nil
+    }
+
+    private var periodLabel: String {
+        if periodFilter == .custom {
+            let f = DateFormatter()
+            f.dateStyle = .short
+            return "\(f.string(from: customStartDate)) – \(f.string(from: customEndDate))"
+        }
+        return periodFilter.rawValue
     }
 
     var body: some View {
@@ -266,9 +318,19 @@ struct ExpenseListView: View {
                                 Text(p.rawValue).tag(p)
                             }
                         }
+                        if periodFilter == .custom {
+                            Button {
+                                showDateRangePicker = true
+                            } label: {
+                                Label(periodLabel, systemImage: "calendar.badge.clock")
+                            }
+                        }
                     } label: {
-                        Label(periodFilter.rawValue, systemImage: "calendar")
-                            .symbolVariant(periodFilter != .all ? .fill : .none)
+                        Label(periodFilter == .custom ? "Datum" : periodFilter.rawValue,
+                              systemImage: periodFilter != .all ? "calendar.badge.checkmark" : "calendar")
+                    }
+                    .onChange(of: periodFilter) { _, newValue in
+                        if newValue == .custom { showDateRangePicker = true }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -278,12 +340,40 @@ struct ExpenseListView: View {
                                 Text(t.rawValue).tag(t)
                             }
                         }
+                        .onChange(of: typeFilter) { _, _ in
+                            selectedCategory = nil
+                        }
+                        if typeFilter == .other || typeFilter == .all, !categories.isEmpty {
+                            Divider()
+                            Menu("Kategorie") {
+                                Button {
+                                    selectedCategory = nil
+                                } label: {
+                                    Label("Alle Kategorien",
+                                          systemImage: selectedCategory == nil ? "checkmark" : "")
+                                }
+                                Divider()
+                                ForEach(categories, id: \.objectID) { cat in
+                                    let name = cat.name ?? ""
+                                    Button {
+                                        selectedCategory = name
+                                        if typeFilter == .all { typeFilter = .other }
+                                    } label: {
+                                        Label(name,
+                                              systemImage: selectedCategory == name ? "checkmark" : "")
+                                    }
+                                }
+                            }
+                        }
                     } label: {
                         Image(systemName: isFiltered
                               ? "line.3.horizontal.decrease.circle.fill"
                               : "line.3.horizontal.decrease.circle")
                     }
                 }
+            }
+            .sheet(isPresented: $showDateRangePicker) {
+                CustomDateRangeSheet(startDate: $customStartDate, endDate: $customEndDate)
             }
             .confirmationDialog(
                 "Eintrag löschen?",
