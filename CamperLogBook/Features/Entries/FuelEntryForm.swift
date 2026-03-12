@@ -33,6 +33,7 @@ struct FuelEntryForm: View {
     @State private var errorAlertMessage: String = ""
     @State private var showMailView: Bool = false
 
+    @State private var isFull: Bool = true
     @State private var isLoading: Bool = false
     @State private var saveLocation: Bool = true
     @State private var showSuccessToast: Bool = false
@@ -110,6 +111,12 @@ struct FuelEntryForm: View {
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                         .onChange(of: costPerLiter) { _, _ in computeTotalCost() }
                     TextField("Gesamtkosten", text: $totalCost).disabled(true)
+                    Toggle("Volltankung", isOn: $isFull)
+                    if !isFull {
+                        Text("Teilbetankung – kein Verbrauch berechnet")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 LocationSection(
                     saveLocation: $saveLocation,
@@ -153,6 +160,7 @@ struct FuelEntryForm: View {
 
         let fetchRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+        fetchRequest.predicate = NSPredicate(format: "isFull == %@", NSNumber(value: true))
         fetchRequest.fetchLimit = 1
 
         do {
@@ -160,8 +168,16 @@ struct FuelEntryForm: View {
             if let previous = previousEntries.first {
                 let diff = currentKmValue - previous.currentKm
                 kmDifference = diff > 0 ? diff : nil
-                if let litersValue = Double(liters.replacingOccurrences(of: ",", with: ".")), diff > 0 {
-                    consumptionPer100km = (litersValue / Double(diff)) * 100
+                // Only compute consumption preview when this entry is a full fill
+                if isFull, diff > 0 {
+                    // Sum liters of all entries since prevFull (exclusive) up to current (inclusive)
+                    let partialRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
+                    partialRequest.predicate = NSPredicate(format: "date > %@", previous.date as NSDate)
+                    let partials = (try? viewContext.fetch(partialRequest)) ?? []
+                    let partialLiters = partials.reduce(0.0) { $0 + $1.liters }
+                    let currentLiters = Double(liters.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+                    let totalLiters = partialLiters + currentLiters
+                    consumptionPer100km = (totalLiters / Double(diff)) * 100
                 } else {
                     consumptionPer100km = nil
                 }
@@ -211,6 +227,7 @@ struct FuelEntryForm: View {
         newEntry.latitude = chosenLocation.coordinate.latitude
         newEntry.longitude = chosenLocation.coordinate.longitude
         newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
+        newEntry.isFull = isFull
 
         if let pdf = pdfData {
             newEntry.receiptData = pdf
@@ -221,24 +238,34 @@ struct FuelEntryForm: View {
             newEntry.receiptType = "image"
         }
 
-        let fetchRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
-        fetchRequest.fetchOffset = 1
-        fetchRequest.fetchLimit = 1
+        // Only calculate consumption for full fills
+        if isFull {
+            let prevFullRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
+            prevFullRequest.predicate = NSPredicate(format: "isFull == %@ AND id != %@", NSNumber(value: true), newEntry.id as CVarArg)
+            prevFullRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+            prevFullRequest.fetchLimit = 1
 
-        do {
-            let previousEntries = try viewContext.fetch(fetchRequest)
-            if let previous = previousEntries.first {
-                let kmDiff = newEntry.currentKm - previous.currentKm
-                kmDifference = kmDiff
-                if kmDiff > 0 {
-                    if let litersValue = Double(liters.replacingOccurrences(of: ",", with: ".")) {
-                        consumptionPer100km = (litersValue / Double(kmDiff)) * 100
+            do {
+                let prevFullEntries = try viewContext.fetch(prevFullRequest)
+                if let prevFull = prevFullEntries.first {
+                    let kmDiff = newEntry.currentKm - prevFull.currentKm
+                    kmDifference = kmDiff
+                    if kmDiff > 0 {
+                        // Sum liters of all entries since prevFull (exclusive) up to and including current
+                        let partialRequest: NSFetchRequest<FuelEntry> = NSFetchRequest(entityName: "FuelEntry")
+                        partialRequest.predicate = NSPredicate(format: "date > %@ AND id != %@", prevFull.date as NSDate, newEntry.id as CVarArg)
+                        let partials = (try? viewContext.fetch(partialRequest)) ?? []
+                        let partialLiters = partials.reduce(0.0) { $0 + $1.liters }
+                        let totalLiters = partialLiters + newEntry.liters
+                        consumptionPer100km = (totalLiters / Double(kmDiff)) * 100
                     }
                 }
+            } catch {
+                ErrorLogger.shared.log(error: error, additionalInfo: "Error fetching previous fuel entry in FuelEntryForm")
             }
-        } catch {
-            ErrorLogger.shared.log(error: error, additionalInfo: "Error fetching previous fuel entry in FuelEntryForm")
+        } else {
+            kmDifference = nil
+            consumptionPer100km = nil
         }
 
         do {
@@ -288,14 +315,7 @@ struct FuelEntryForm: View {
         do {
             let entries = try viewContext.fetch(request)
             let sortedAsc = entries.sorted { $0.date < $1.date }
-            guard sortedAsc.count >= 2,
-                  let first = sortedAsc.first,
-                  let last = sortedAsc.last,
-                  last.currentKm > first.currentKm else { return nil }
-            let totalKm = Double(last.currentKm - first.currentKm)
-            let totalLiters = entries.reduce(0.0) { $0 + $1.liters }
-            let avg = (totalLiters / totalKm) * 100
-            return avg
+            return FuelConsumptionCalculator.averageConsumption(from: sortedAsc)
         } catch {
             ErrorLogger.shared.log(error: error, additionalInfo: "Fehler bei Durchschnittsberechnung in FuelEntryForm")
             return nil
@@ -378,6 +398,7 @@ struct FuelEntryForm: View {
         pdfData = nil
         selectedLocation = nil
         manualAddress = ""
+        isFull = true
     }
 }
 

@@ -17,6 +17,7 @@ struct EditFuelEntryView: View {
     @State private var receiptImage: UIImage?
     @State private var pdfData: Data?
 
+    @State private var isFull: Bool
     @State private var showingReceiptOptions = false
     @State private var receiptSource: ReceiptSource? = nil
     @State private var showReceiptDetail = false
@@ -47,6 +48,7 @@ struct EditFuelEntryView: View {
             _receiptImage = State(initialValue: nil)
             _pdfData = State(initialValue: nil)
         }
+        _isFull = State(initialValue: fuelEntry.isFull)
         _saveLocation = State(initialValue: fuelEntry.latitude != 0)
         if fuelEntry.latitude != 0 {
             _manualLocation = State(initialValue: CLLocationCoordinate2D(latitude: fuelEntry.latitude, longitude: fuelEntry.longitude))
@@ -83,6 +85,12 @@ struct EditFuelEntryView: View {
                     .keyboardType(.decimalPad)
                 TextField("Gesamtkosten", text: $totalCost)
                     .disabled(true)
+                Toggle("Volltankung", isOn: $isFull)
+                if !isFull {
+                    Text("Teilbetankung – kein Verbrauch berechnet")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             LocationSection(
                 saveLocation: $saveLocation,
@@ -123,6 +131,7 @@ struct EditFuelEntryView: View {
         fuelEntry.fuelType = fuelType
         fuelEntry.isDiesel = (fuelType == "Diesel")
         fuelEntry.isAdBlue = (fuelType == "AdBlue")
+        fuelEntry.isFull = isFull
         fuelEntry.currentKm = currentKmValue
         fuelEntry.liters = Double(liters) ?? 0.0
         fuelEntry.costPerLiter = costValue

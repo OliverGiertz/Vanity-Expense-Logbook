@@ -67,7 +67,7 @@ struct OverviewView: View {
                                 // Linke Seite: Datum
                                 Text("\(entry.date, formatter: dateFormatter)")
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                
+
                                 // Rechte Seite: Drei Zeilen in einem VStack
                                 VStack(alignment: .trailing, spacing: 4) {
                                     if let diff = fuelKmDifference(for: index, in: recentFuel) {
@@ -75,9 +75,12 @@ struct OverviewView: View {
                                     } else {
                                         Text("- km")
                                     }
-                                    if let diff = fuelKmDifference(for: index, in: recentFuel), diff > 0 {
-                                        let consumption = (entry.liters / Double(diff)) * 100
-                                        Text("⌀ \(String(format: "%.2f", consumption)) L/100km")
+                                    if entry.isFull, let interval = fuelInterval(for: index, in: recentFuel) {
+                                        Text("⌀ \(String(format: "%.2f", interval.consumptionPer100km)) L/100km")
+                                    } else if !entry.isFull {
+                                        Text("Teilbetankung")
+                                            .foregroundColor(.secondary)
+                                            .font(.caption)
                                     } else {
                                         Text("⌀ - L/100km")
                                     }
@@ -124,17 +127,10 @@ struct OverviewView: View {
     }
     
     // Durchschnittsverbrauch aus allen Tankbelegen berechnen.
+    // Nur Intervalle zwischen zwei Volltankungen werden berücksichtigt.
     private func calculateAverageConsumption() -> Double? {
         let sortedAsc = fuelEntries.sorted { $0.date < $1.date }
-        guard sortedAsc.count >= 2,
-              let first = sortedAsc.first,
-              let last = sortedAsc.last,
-              last.currentKm > first.currentKm else {
-            return nil
-        }
-        let totalKm = Double(last.currentKm - first.currentKm)
-        let totalLiters = fuelEntries.reduce(0.0) { $0 + $1.liters }
-        return (totalLiters / totalKm) * 100
+        return FuelConsumptionCalculator.averageConsumption(from: sortedAsc)
     }
     
     // Berechnet die Tage pro Gasflasche anhand der letzten zwei Gasbelege.
@@ -177,6 +173,32 @@ struct OverviewView: View {
             let previous = entries[index - 1]
             let diff = previous.currentKm - current.currentKm
             return diff > 0 ? diff : nil
+        }
+        return nil
+    }
+
+    // Returns the consumption interval ending at this entry (only for full fill-ups).
+    // entries is sorted descending (most recent first); we need ascending for the calculator.
+    private func fuelInterval(for index: Int, in entries: [FuelEntry]) -> FuelConsumptionCalculator.Interval? {
+        guard entries[index].isFull else { return nil }
+        // entries are sorted descending; reverse to ascending for the calculator
+        let allAsc = fuelEntries.sorted { $0.date < $1.date }
+        let currentEntry = entries[index]
+        let intervals = FuelConsumptionCalculator.intervals(from: allAsc)
+        // Find the interval that ends at this entry (matching by objectID)
+        guard let entryIndex = allAsc.firstIndex(where: { $0.objectID == currentEntry.objectID }) else { return nil }
+        // intervals are built from full-fill transitions; find the one for this entry
+        var prevFullIdx: Int? = nil
+        var intervalIndex = 0
+        for (idx, entry) in allAsc.enumerated() {
+            guard entry.isFull else { continue }
+            if let _ = prevFullIdx {
+                if idx == entryIndex {
+                    return intervalIndex < intervals.count ? intervals[intervalIndex] : nil
+                }
+                intervalIndex += 1
+            }
+            prevFullIdx = idx
         }
         return nil
     }

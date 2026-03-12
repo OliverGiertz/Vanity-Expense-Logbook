@@ -181,6 +181,8 @@ struct CSVHelper {
         
         if let isDieselStr = row["isdiesel"], let b = parseBool(from: isDieselStr) { entry.isDiesel = b }
         if let isAdBlueStr = row["isadblue"], let b = parseBool(from: isAdBlueStr) { entry.isAdBlue = b }
+        // isFull defaults to true for legacy imports without the column
+        entry.isFull = row["isfull"].flatMap { parseBool(from: $0) } ?? true
         if let currentKmStr = row["currentkm"] {
             let kmString = currentKmStr.replacingOccurrences(of: ".", with: "").trimmingCharacters(in: .whitespaces)
             if let km = Int64(kmString) {
@@ -291,7 +293,7 @@ struct CSVHelper {
     /// Erzeugt eine CSV-Datei (als String) mit einheitlichen Spalten für alle ausgewählten Typen.
     /// (Export erfolgt weiterhin tab-getrennt.)
     static func generateCSV(forTypes types: [CSVHelperEntryType], in context: NSManagedObjectContext) -> String {
-        let header = ["entryType", "date", "isDiesel", "isAdBlue", "currentKm", "liters", "costPerLiter", "totalCost", "costPerBottle", "bottleCount", "category", "details", "cost", "latitude", "longitude", "receiptData"]
+        let header = ["entryType", "date", "isDiesel", "isAdBlue", "isFull", "currentKm", "liters", "costPerLiter", "totalCost", "costPerBottle", "bottleCount", "category", "details", "cost", "latitude", "longitude", "receiptData"]
         var rows = [header.joined(separator: "\t")]
         
         func encodeReceiptData(_ data: Data?) -> String {
@@ -310,6 +312,7 @@ struct CSVHelper {
                     row.append(dateFormatter.string(from: entry.date))
                     row.append("\(entry.isDiesel)")
                     row.append("\(entry.isAdBlue)")
+                    row.append("\(entry.isFull)")
                     row.append("\(entry.currentKm)")
                     row.append("\(entry.liters)")
                     row.append("\(entry.costPerLiter)")
@@ -336,6 +339,7 @@ struct CSVHelper {
                     row.append(dateFormatter.string(from: entry.date))
                     row.append("") // isDiesel
                     row.append("") // isAdBlue
+                    row.append("") // isFull
                     row.append("") // currentKm
                     row.append("") // liters
                     row.append("") // costPerLiter
@@ -362,6 +366,7 @@ struct CSVHelper {
                     row.append(dateFormatter.string(from: entry.date))
                     row.append("") // isDiesel
                     row.append("") // isAdBlue
+                    row.append("") // isFull
                     row.append("") // currentKm
                     row.append("") // liters
                     row.append("") // costPerLiter

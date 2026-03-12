@@ -7,6 +7,7 @@ public class FuelEntry: NSManagedObject, Identifiable {
     @NSManaged public var date: Date
     @NSManaged public var isDiesel: Bool
     @NSManaged public var isAdBlue: Bool
+    @NSManaged public var isFull: Bool
     @NSManaged public var currentKm: Int64
     @NSManaged public var liters: Double
     @NSManaged public var costPerLiter: Double
