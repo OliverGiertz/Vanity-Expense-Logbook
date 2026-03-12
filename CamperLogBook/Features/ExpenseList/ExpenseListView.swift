@@ -147,6 +147,23 @@ enum AnyExpenseEntry: Identifiable {
         }
     }
 
+    var searchableText: String {
+        switch self {
+        case .fuel(let e):
+            return [e.fuelType ?? "", e.address ?? "", String(format: "%.2f", e.totalCost),
+                    rowDateFormatter.string(from: e.date)].joined(separator: " ")
+        case .gas(let e):
+            return [e.address ?? "", String(format: "%.2f", e.costPerBottle * Double(e.bottleCount)),
+                    rowDateFormatter.string(from: e.date)].joined(separator: " ")
+        case .service(let e):
+            return [e.address ?? "", String(format: "%.2f", e.cost),
+                    rowDateFormatter.string(from: e.date)].joined(separator: " ")
+        case .other(let e):
+            return [e.category, e.details ?? "", e.address ?? "",
+                    String(format: "%.2f", e.cost), rowDateFormatter.string(from: e.date)].joined(separator: " ")
+        }
+    }
+
     func delete(in context: NSManagedObjectContext) throws {
         switch self {
         case .fuel(let e):    context.delete(e)
@@ -242,6 +259,7 @@ struct ExpenseListView: View {
         sortDescriptors: [NSSortDescriptor(keyPath: \ExpenseCategory.name, ascending: true)]
     ) private var categories: FetchedResults<ExpenseCategory>
 
+    @State private var searchText: String = ""
     @State private var typeFilter: EntryTypeFilter = .all
     @State private var periodFilter: PeriodFilter = .all
     @State private var selectedCategory: String? = nil
@@ -276,11 +294,15 @@ struct ExpenseListView: View {
             }
         }
 
+        if !searchText.isEmpty {
+            all = all.filter { $0.searchableText.localizedStandardContains(searchText) }
+        }
+
         return all.sorted { $0.date > $1.date }
     }
 
     private var isFiltered: Bool {
-        typeFilter != .all || periodFilter != .all || selectedCategory != nil
+        typeFilter != .all || periodFilter != .all || selectedCategory != nil || !searchText.isEmpty
     }
 
     private var periodLabel: String {
@@ -314,6 +336,7 @@ struct ExpenseListView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Ausgaben")
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Suchen...")
             .onChange(of: typeFilter) { _, _ in
                 selectedCategory = nil
             }
