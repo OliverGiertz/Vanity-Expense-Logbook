@@ -11,6 +11,10 @@ struct CoreDataTestStack {
         container = NSPersistentContainer(name: "CamperLogBook")
         let description = NSPersistentStoreDescription()
         description.type = NSInMemoryStoreType
+        // Unique URL per instance ensures full store isolation during parallel test execution.
+        // Without this, containers sharing the same name reuse the same in-memory store,
+        // causing NSCocoaErrorDomain Code=134020 when a second test opens the shared store.
+        description.url = URL(fileURLWithPath: "/dev/null/").appendingPathComponent(UUID().uuidString)
         container.persistentStoreDescriptions = [description]
         container.loadPersistentStores { _, error in
             if let error = error {
