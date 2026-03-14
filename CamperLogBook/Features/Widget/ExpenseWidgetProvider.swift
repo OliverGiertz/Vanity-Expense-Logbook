@@ -37,7 +37,7 @@ struct ExpenseWidgetProvider: TimelineProvider {
         let monthPredicate = NSPredicate(format: "date >= %@ AND date <= %@", monthStart as NSDate, now as NSDate)
 
         // Last fuel entry
-        let fuelReq: NSFetchRequest<FuelEntry> = FuelEntry.fetchRequest()
+        let fuelReq = NSFetchRequest<FuelEntry>(entityName: "FuelEntry")
         fuelReq.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
         fuelReq.fetchLimit = 1
         let lastFuel = (try? ctx.fetch(fuelReq))?.first

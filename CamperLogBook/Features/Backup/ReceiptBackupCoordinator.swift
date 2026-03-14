@@ -4,7 +4,7 @@ import UIKit
 
 /// Koordinator für das Backup und die Wiederherstellung von Beleg-Dokumenten.
 /// Nutzt einen privaten Core-Data-Kontext, damit sämtliche Operationen thread-safe bleiben.
-class ReceiptBackupCoordinator {
+class ReceiptBackupCoordinator: @unchecked Sendable {
     private let workerContext: NSManagedObjectContext
 
     init(context: NSManagedObjectContext) {
