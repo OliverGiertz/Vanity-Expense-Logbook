@@ -50,10 +50,10 @@ struct FuelMapView: View {
     @State private var cachedFuelGroups: [FuelGroup] = []
     @State private var gasEntries: [GasEntry] = []
     @State private var serviceEntries: [ServiceEntry] = []
-    @State private var region: MKCoordinateRegion = MKCoordinateRegion(
+    @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 51.1657, longitude: 10.4515),
         span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
-    )
+    ))
     @State private var selectedGroupID: String? = nil
 
     // Filter toggles
@@ -117,7 +117,7 @@ struct FuelMapView: View {
                 .pickerStyle(SegmentedPickerStyle())
                 .padding(.horizontal)
                 .padding(.top, 8)
-                .onChange(of: selectedPeriod) { _ in loadEntries() }
+                .onChange(of: selectedPeriod) { loadEntries() }
 
                 // Filter toggles
                 HStack(spacing: 16) {
@@ -174,42 +174,28 @@ struct FuelMapView: View {
 
     @ViewBuilder
     private var mapView: some View {
-        let hasContent = !visibleFuelGroups.isEmpty || !allAnnotations.isEmpty
-
-        if hasContent {
-            // Combined annotation list: fuel groups + gas/service pins
-            // We use two overlapping Map layers to keep type safety simple.
-            ZStack {
-                Map(coordinateRegion: $region, annotationItems: visibleFuelGroups) { group in
-                    MapAnnotation(coordinate: group.coordinate) {
+        if !visibleFuelGroups.isEmpty || !allAnnotations.isEmpty {
+            Map(position: $cameraPosition) {
+                ForEach(visibleFuelGroups) { group in
+                    Annotation("", coordinate: group.coordinate) {
                         fuelAnnotationView(for: group)
                     }
                 }
-
-                // Overlay gas & service pins using a transparent map on top
-                if !allAnnotations.isEmpty {
-                    Map(coordinateRegion: $region, annotationItems: allAnnotations) { pin in
-                        MapAnnotation(coordinate: pin.coordinate) {
-                            pinAnnotationView(for: pin)
-                        }
+                ForEach(allAnnotations) { pin in
+                    Annotation("", coordinate: pin.coordinate) {
+                        pinAnnotationView(for: pin)
                     }
-                    .allowsHitTesting(true)
-                    .background(Color.clear)
-                    .opacity(1)
+                }
+            }
+        } else if let userLocation = locationManager.lastLocation {
+            Map(position: $cameraPosition) {
+                Annotation("", coordinate: userLocation.coordinate) {
+                    Image(systemName: "mappin.circle.fill")
+                        .foregroundColor(.red)
                 }
             }
         } else {
-            if let userLocation = locationManager.lastLocation {
-                let userAnnotation = IdentifiableCoordinate(coordinate: userLocation.coordinate)
-                Map(coordinateRegion: $region, annotationItems: [userAnnotation]) { item in
-                    MapAnnotation(coordinate: item.coordinate) {
-                        Image(systemName: "mappin.circle.fill")
-                            .foregroundColor(.red)
-                    }
-                }
-            } else {
-                Map(coordinateRegion: $region)
-            }
+            Map(position: $cameraPosition)
         }
     }
 
@@ -270,12 +256,10 @@ struct FuelMapView: View {
 
     private func updateRegion() {
         if let userLocation = locationManager.lastLocation {
-            withAnimation {
-                region = MKCoordinateRegion(
-                    center: userLocation.coordinate,
-                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                )
-            }
+            cameraPosition = .region(MKCoordinateRegion(
+                center: userLocation.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+            ))
         }
     }
 
