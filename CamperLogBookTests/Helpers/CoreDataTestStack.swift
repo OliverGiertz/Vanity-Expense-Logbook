@@ -9,7 +9,9 @@ struct CoreDataTestStack {
 
     init() {
         container = NSPersistentContainer(name: "CamperLogBook")
-        container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
+        let description = NSPersistentStoreDescription()
+        description.type = NSInMemoryStoreType
+        container.persistentStoreDescriptions = [description]
         container.loadPersistentStores { _, error in
             if let error = error {
                 fatalError("Test CoreData stack failed to load: \(error)")
