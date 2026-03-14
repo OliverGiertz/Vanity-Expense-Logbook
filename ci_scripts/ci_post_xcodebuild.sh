@@ -1,26 +1,22 @@
 #!/bin/sh
 # ci_scripts/ci_post_xcodebuild.sh
 #
-# Xcode Cloud führt dieses Skript nach jeder Action (Build / Test / Archive) aus.
-# Bei Test-Fehlern wird automatisch ein GitHub Issue angelegt.
+# Xcode Cloud führt dieses Skript nach jeder Action aus.
+# Bei Fehlern wird automatisch ein detailliertes GitHub Issue angelegt,
+# das alle Informationen für manuelle und automatisierte Verarbeitung enthält.
 #
-# Benötigte Xcode Cloud Environment Variable (als Secret setzen):
+# Benötigte Secrets (Xcode Cloud → Workflow → Environment → Secrets):
 #   GITHUB_TOKEN  →  Personal Access Token mit Scope "repo"
 
 set -e
 
-# Nur bei der Test-Action und nur bei Fehler aktiv werden
-if [ "$CI_XCODEBUILD_ACTION" != "test" ]; then
-  echo "ci_post_xcodebuild: Action ist '$CI_XCODEBUILD_ACTION' – kein Issue nötig."
+# ── Nur bei Fehler aktiv werden ───────────────────────────────────────────────
+if [ "${CI_XCODEBUILD_EXIT_CODE:-0}" = "0" ]; then
+  echo "✅  Action '${CI_XCODEBUILD_ACTION}' erfolgreich – kein Issue wird angelegt."
   exit 0
 fi
 
-if [ "$CI_XCODEBUILD_EXIT_CODE" = "0" ]; then
-  echo "✅  Tests erfolgreich – kein Issue wird angelegt."
-  exit 0
-fi
-
-echo "❌  Tests fehlgeschlagen (Exit-Code: $CI_XCODEBUILD_EXIT_CODE) – lege GitHub Issue an …"
+echo "❌  Action '${CI_XCODEBUILD_ACTION}' fehlgeschlagen (Exit-Code: ${CI_XCODEBUILD_EXIT_CODE})"
 
 # ── Pflichtfeld prüfen ────────────────────────────────────────────────────────
 if [ -z "${GITHUB_TOKEN:-}" ]; then
@@ -32,50 +28,168 @@ fi
 # ── Metadaten zusammenstellen ─────────────────────────────────────────────────
 REPO="OliverGiertz/Vanity-Expense-Logbook"
 BRANCH="${CI_BRANCH:-unbekannt}"
-COMMIT="${CI_COMMIT:-unbekannt}"
+COMMIT_FULL="${CI_COMMIT:-unbekannt}"
+COMMIT_SHORT=$(echo "$COMMIT_FULL" | cut -c1-7)
 BUILD_NUM="${CI_BUILD_NUMBER:-?}"
 WORKFLOW="${CI_WORKFLOW:-?}"
-DATE=$(date '+%d.%m.%Y %H:%M')
+ACTION="${CI_XCODEBUILD_ACTION:-?}"
+EXIT_CODE="${CI_XCODEBUILD_EXIT_CODE:-?}"
+PRODUCT="${CI_PRODUCT:-CamperLogBook}"
+BUNDLE_ID="${CI_BUNDLE_ID:-VanityOnTour.CamperLogBook}"
+TEAM_ID="${CI_TEAM_ID:-T5A3ZR4938}"
+DATE_ISO=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+DATE_HUMAN=$(date '+%d.%m.%Y %H:%M UTC')
 
-# Version aus project.pbxproj lesen
-VERSION=$(grep MARKETING_VERSION "$CI_WORKSPACE/CamperLogBook.xcodeproj/project.pbxproj" \
-  | head -1 | tr -d ' ;' | cut -d= -f2 2>/dev/null || echo "?")
+# Version + Build aus project.pbxproj lesen
+PBXPROJ="$CI_WORKSPACE/CamperLogBook.xcodeproj/project.pbxproj"
+VERSION=$(grep 'MARKETING_VERSION' "$PBXPROJ" 2>/dev/null \
+  | grep -v '= 1;' | head -1 | tr -d ' ;' | cut -d= -f2 || echo "?")
+BUILD_VERSION=$(grep 'CURRENT_PROJECT_VERSION' "$PBXPROJ" 2>/dev/null \
+  | grep -v '= 1;' | head -1 | tr -d ' ;' | cut -d= -f2 || echo "?")
 
-TITLE="🐛 [Xcode Cloud] Test-Fehler v${VERSION} – ${DATE} (${BRANCH}@${COMMIT:0:7})"
+# Action-Label für Issue-Titel
+case "$ACTION" in
+  test)    ACTION_EMOJI="🧪"; ACTION_LABEL="Test-Fehler"   ;;
+  archive) ACTION_EMOJI="📦"; ACTION_LABEL="Archive-Fehler" ;;
+  analyze) ACTION_EMOJI="🔍"; ACTION_LABEL="Analyse-Fehler" ;;
+  build)   ACTION_EMOJI="🔨"; ACTION_LABEL="Build-Fehler"   ;;
+  *)       ACTION_EMOJI="❌"; ACTION_LABEL="CI-Fehler"       ;;
+esac
 
+# ── Test-Ergebnisse aus .xcresult extrahieren (nur bei test-Action) ───────────
+TEST_SUMMARY=""
+FAILED_TESTS_LIST=""
+
+if [ "$ACTION" = "test" ] && [ -n "${CI_RESULT_BUNDLE_PATH:-}" ] && [ -d "$CI_RESULT_BUNDLE_PATH" ]; then
+  echo "  → Lese Test-Ergebnisse aus: $CI_RESULT_BUNDLE_PATH"
+
+  # Fehlgeschlagene Tests über xcresulttool extrahieren
+  FAILED_TESTS_LIST=$(xcrun xcresulttool get \
+    --format json \
+    --path "$CI_RESULT_BUNDLE_PATH" 2>/dev/null \
+    | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    actions = data.get('actions', {}).get('_values', [])
+    failures = []
+    for action in actions:
+        result = action.get('actionResult', {})
+        tests = result.get('testsRef', {})
+        summary = result.get('testSummaries', {}).get('_values', [])
+        for s in summary:
+            for tg in s.get('testableSummaries', {}).get('_values', []):
+                suite_name = tg.get('targetName', {}).get('_value', '?')
+                for ts in tg.get('tests', {}).get('_values', []):
+                    for tc in ts.get('subtests', {}).get('_values', []):
+                        for t in tc.get('subtests', {}).get('_values', []):
+                            status = t.get('testStatus', {}).get('_value', '')
+                            if status == 'Failure':
+                                name = t.get('identifier', {}).get('_value', '?')
+                                dur  = t.get('duration', {}).get('_value', '?')
+                                failures.append(f'- \`{name}\` ({dur}s)')
+    print('\n'.join(failures) if failures else '')
+except Exception as e:
+    print('')
+" 2>/dev/null || true)
+
+  if [ -n "$FAILED_TESTS_LIST" ]; then
+    TEST_COUNT=$(echo "$FAILED_TESTS_LIST" | grep -c '^-' || echo "?")
+    TEST_SUMMARY="### 🔴 Fehlgeschlagene Tests (${TEST_COUNT})
+
+${FAILED_TESTS_LIST}"
+  else
+    TEST_SUMMARY="### 🔴 Test-Ergebnisse
+
+Fehlgeschlagene Tests konnten nicht automatisch extrahiert werden.
+Bitte Build **#${BUILD_NUM}** in App Store Connect → Xcode Cloud einsehen."
+  fi
+fi
+
+# ── Commit-Log für Kontext ────────────────────────────────────────────────────
+RECENT_COMMITS=$(git -C "$CI_WORKSPACE" log --oneline -5 2>/dev/null \
+  | sed 's/^/- /' || echo "- (nicht verfügbar)")
+
+# ── App Store Connect Link ────────────────────────────────────────────────────
+ASC_BUILDS_URL="https://appstoreconnect.apple.com/teams/${TEAM_ID}/apps"
+XCODE_CLOUD_URL="https://appstoreconnect.apple.com/teams/${TEAM_ID}/frameworks/${BUNDLE_ID}/builds"
+
+# ── Issue-Titel ───────────────────────────────────────────────────────────────
+TITLE="${ACTION_EMOJI} [Xcode Cloud] ${ACTION_LABEL} v${VERSION} – ${DATE_HUMAN} (${BRANCH}@${COMMIT_SHORT})"
+
+# ── Issue-Body ────────────────────────────────────────────────────────────────
 BODY=$(cat <<EOF
-## ❌ Test-Fehler in Xcode Cloud
+## ${ACTION_EMOJI} ${ACTION_LABEL} in Xcode Cloud
 
-| | |
+| Feld | Wert |
 |---|---|
-| **Version** | v${VERSION} |
+| **App-Version** | v${VERSION} (Build ${BUILD_VERSION}) |
 | **Branch** | \`${BRANCH}\` |
-| **Commit** | \`${COMMIT:0:7}\` |
-| **Build** | #${BUILD_NUM} |
+| **Commit** | [\`${COMMIT_SHORT}\`](https://github.com/${REPO}/commit/${COMMIT_FULL}) |
+| **Xcode Cloud Build** | #${BUILD_NUM} |
 | **Workflow** | ${WORKFLOW} |
-| **Datum** | ${DATE} |
+| **Action** | \`${ACTION}\` (Exit-Code: ${EXIT_CODE}) |
+| **Datum** | ${DATE_HUMAN} |
+| **Bundle ID** | \`${BUNDLE_ID}\` |
 
-## Nächster Schritt
+## 🔗 Direkte Links
 
-Test-Ergebnisse in Xcode Cloud einsehen:
-- Xcode → Report Navigator (CMD+9) → Cloud-Tab → Build #${BUILD_NUM}
+- [Xcode Cloud Build #${BUILD_NUM} ansehen](${XCODE_CLOUD_URL})
+- [App Store Connect → Xcode Cloud](${ASC_BUILDS_URL})
+- [Commit ${COMMIT_SHORT} auf GitHub](https://github.com/${REPO}/commit/${COMMIT_FULL})
+- [Branch \`${BRANCH}\` auf GitHub](https://github.com/${REPO}/tree/${BRANCH})
 
-Oder direkt im Browser:
-- App Store Connect → Xcode Cloud → Builds
+${TEST_SUMMARY}
 
-## Beheben
+## 📋 Letzte Commits auf Branch \`${BRANCH}\`
 
-Dieses Issue Claude zur Behebung übergeben:
-1. Issue öffnen
-2. Fehlerdetails aus Xcode Cloud Log kopieren
-3. Claude beauftragen: *"Bitte behebe die Fehler aus Issue #..."*
+${RECENT_COMMITS}
+
+## 🤖 Automatisierte Verarbeitung
+
+\`\`\`yaml
+# Maschinenlesbare Metadaten für Claude / Automatisierung
+ci_failure:
+  action: "${ACTION}"
+  exit_code: "${EXIT_CODE}"
+  version: "${VERSION}"
+  build_version: "${BUILD_VERSION}"
+  branch: "${BRANCH}"
+  commit: "${COMMIT_FULL}"
+  build_number: "${BUILD_NUM}"
+  workflow: "${WORKFLOW}"
+  bundle_id: "${BUNDLE_ID}"
+  team_id: "${TEAM_ID}"
+  timestamp_iso: "${DATE_ISO}"
+  xcode_cloud_builds_url: "${XCODE_CLOUD_URL}"
+  repo: "${REPO}"
+\`\`\`
+
+## 🛠 Nächster Schritt für Claude
+
+Dieses Issue Claude zur automatischen Behebung übergeben:
+
+1. Issue öffnen (du bist gerade hier)
+2. Fehlerlog aus [Xcode Cloud Build #${BUILD_NUM}](${XCODE_CLOUD_URL}) kopieren
+3. Claude beauftragen:
+
+> *"Bitte behebe den Fehler aus Issue #[NUMMER]. Die Fehlerdetails aus dem Xcode Cloud Log sind: [LOG EINFÜGEN]"*
 
 ---
-*Automatisch erstellt durch \`ci_scripts/ci_post_xcodebuild.sh\`*
+*Automatisch erstellt von \`ci_scripts/ci_post_xcodebuild.sh\` – Workflow: ${WORKFLOW} – Build #${BUILD_NUM}*
 EOF
 )
 
+# ── Labels bestimmen ──────────────────────────────────────────────────────────
+case "$ACTION" in
+  test)    LABELS='["bug","ci-failure","test-failure"]' ;;
+  archive) LABELS='["bug","ci-failure","archive-failure"]' ;;
+  *)       LABELS='["bug","ci-failure"]' ;;
+esac
+
 # ── GitHub Issue via API anlegen ──────────────────────────────────────────────
+echo "  → Lege GitHub Issue an …"
+
 HTTP_STATUS=$(curl -s -o /tmp/gh_issue_response.json -w "%{http_code}" \
   -X POST \
   -H "Authorization: token ${GITHUB_TOKEN}" \
@@ -85,7 +199,7 @@ HTTP_STATUS=$(curl -s -o /tmp/gh_issue_response.json -w "%{http_code}" \
   --data "{
     \"title\": $(echo "$TITLE" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))'),
     \"body\":  $(echo "$BODY"  | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))'),
-    \"labels\": [\"bug\"]
+    \"labels\": ${LABELS}
   }")
 
 if [ "$HTTP_STATUS" = "201" ]; then
