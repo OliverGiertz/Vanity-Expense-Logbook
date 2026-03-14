@@ -10,7 +10,24 @@ Xcode Widget Extension Target eingebunden werden.
    - Product Name: `CamperLogBookWidget`
    - "Include Configuration App Intent" → **deaktivieren**
 
-2. **Dateien zum Target hinzufügen**
+2. **Entry-Point-Datei im Widget-Target erstellen**
+   Da `@main` nur einmal pro Modul erlaubt ist, braucht das Widget-Target eine
+   eigene Entry-Point-Datei, die **nicht** im Haupt-App-Ordner liegt.
+   Xcode legt beim Anlegen des Targets automatisch eine `CamperLogBookWidget.swift` an –
+   deren Inhalt ersetzen durch:
+   ```swift
+   import WidgetKit
+   import SwiftUI
+
+   @main
+   struct ExpenseWidgetBundle: WidgetBundle {
+       var body: some Widget {
+           ExpenseWidget()
+       }
+   }
+   ```
+
+3. **Dateien zum Target hinzufügen**
    Die folgenden Dateien aus `CamperLogBook/Features/Widget/` zum neuen Target hinzufügen
    (Target Membership im File Inspector):
    - `ExpenseWidget.swift`
@@ -18,11 +35,11 @@ Xcode Widget Extension Target eingebunden werden.
    - `ExpenseWidgetProvider.swift`
    - `ExpenseWidgetView.swift`
 
-3. **Shared Code zugänglich machen**
+4. **Shared Code zugänglich machen**
    `PersistenceController.swift` und `Models.swift` ebenfalls zum Widget-Target hinzufügen
    (Target Membership → auch `CamperLogBookWidget` anhaken).
 
-4. **App Group für CoreData (empfohlen)**
+5. **App Group für CoreData (empfohlen)**
    Damit das Widget auf denselben CoreData-Store zugreift:
    - Haupt-App-Target: Signing & Capabilities → + Capability → App Groups → `group.de.vanityontour.camperlogbook`
    - Widget-Target: dasselbe App Group hinzufügen
@@ -34,5 +51,5 @@ Xcode Widget Extension Target eingebunden werden.
      container.persistentStoreDescriptions.first?.url = containerURL
      ```
 
-5. **Bundle Identifier**
+6. **Bundle Identifier**
    Widget-Target Bundle ID: `de.vanityontour.camperlogbook.widget`
