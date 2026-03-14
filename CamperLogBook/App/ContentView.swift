@@ -12,8 +12,7 @@ struct ContentView: View {
 
     @FetchRequest(
         entity: FuelEntry.entity(),
-        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)],
-        fetchLimit: 1
+        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)]
     ) private var lastFuel: FetchedResults<FuelEntry>
 
     private var currentKm: Int64 { lastFuel.first?.currentKm ?? 0 }
