@@ -2,7 +2,7 @@ import Foundation
 import CoreData
 
 /// Koordinator für das Backup und die Wiederherstellung von CoreData
-class CoreDataBackupCoordinator {
+class CoreDataBackupCoordinator: @unchecked Sendable {
     private let context: NSManagedObjectContext
 
     init(context: NSManagedObjectContext) {

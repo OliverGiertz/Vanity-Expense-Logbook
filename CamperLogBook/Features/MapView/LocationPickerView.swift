@@ -2,29 +2,21 @@ import SwiftUI
 import MapKit
 import CoreLocation
 
-struct IdentifiableCoordinate: Identifiable {
-    let coordinate: CLLocationCoordinate2D
-    var id: String { "\(coordinate.latitude),\(coordinate.longitude)" }
-}
-
 struct LocationPickerView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var selectedCoordinate: CLLocationCoordinate2D?
     @Binding var selectedAddress: String
 
-    @State private var region = MKCoordinateRegion(
+    @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 51.1657, longitude: 10.4515),
         latitudinalMeters: 1_000_000,
         longitudinalMeters: 1_000_000
-    )
-    
+    ))
+    @State private var centerCoordinate = CLLocationCoordinate2D(latitude: 51.1657, longitude: 10.4515)
+
     @State private var searchQuery: String = ""
     @State private var isSearching: Bool = false
 
-    private var centerAnnotations: [IdentifiableCoordinate] {
-        [IdentifiableCoordinate(coordinate: region.center)]
-    }
-    
     var body: some View {
         VStack {
             // Suchleiste
@@ -38,12 +30,15 @@ struct LocationPickerView: View {
                 .disabled(searchQuery.trimmingCharacters(in: .whitespaces).isEmpty || isSearching)
             }
             .padding()
-            
-            Map(coordinateRegion: $region, annotationItems: centerAnnotations) { item in
-                MapAnnotation(coordinate: item.coordinate) {
+
+            Map(position: $cameraPosition) {
+                Annotation("", coordinate: centerCoordinate) {
                     Image(systemName: "mappin.circle.fill")
                         .foregroundColor(.red)
                 }
+            }
+            .onMapCameraChange { context in
+                centerCoordinate = context.region.center
             }
             .frame(height: 300)
             .overlay(
@@ -54,7 +49,7 @@ struct LocationPickerView: View {
                     .padding(),
                 alignment: .top
             )
-            
+
             // Zeige die gefundene Adresse an (falls vorhanden)
             if !selectedAddress.isEmpty {
                 Text("Gefundene Adresse: \(selectedAddress)")
@@ -64,7 +59,7 @@ struct LocationPickerView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Übernehmen") {
-                    selectedCoordinate = region.center
+                    selectedCoordinate = centerCoordinate
                     dismiss()
                 }
             }
@@ -72,7 +67,7 @@ struct LocationPickerView: View {
         .navigationTitle("Standort wählen")
         .navigationBarTitleDisplayMode(.inline)
     }
-    
+
     private func searchAddress() {
         isSearching = true
         let geocoder = CLGeocoder()
@@ -83,10 +78,12 @@ struct LocationPickerView: View {
                 return
             }
             if let placemark = placemarks?.first, let location = placemark.location {
-                withAnimation {
-                    region.center = location.coordinate
-                    region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                }
+                let newRegion = MKCoordinateRegion(
+                    center: location.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                )
+                centerCoordinate = location.coordinate
+                cameraPosition = .region(newRegion)
                 var addressComponents: [String] = []
                 if let name = placemark.name { addressComponents.append(name) }
                 if let thoroughfare = placemark.thoroughfare { addressComponents.append(thoroughfare) }
