@@ -7,13 +7,6 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
-		A79EA8812D58A059001C1D0B /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A79EA8592D58A057001C1D0B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A79EA8602D58A057001C1D0B;
-			remoteInfo = CamperLogBook;
-		};
 		A7B1B3D52F56EB030000DBCC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A79EA8592D58A057001C1D0B /* Project object */;
@@ -24,9 +17,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A77C7A052EAE7126003A0838 /* Screenshots.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Screenshots.xctestplan; sourceTree = "<group>"; };
 		A79EA8612D58A057001C1D0B /* CamperLogBook.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CamperLogBook.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CamperLogBookUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A7B1B3D12F56EB030000DBCC /* CamperLogBookTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CamperLogBookTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -49,11 +40,6 @@
 			path = CamperLogBook;
 			sourceTree = "<group>";
 		};
-		A79EA8832D58A059001C1D0B /* CamperLogBookUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CamperLogBookUITests;
-			sourceTree = "<group>";
-		};
 		A7B1B3D22F56EB030000DBCC /* CamperLogBookTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CamperLogBookTests;
@@ -63,13 +49,6 @@
 
 /* Begin PBXFrameworksBuildPhase section */
 		A79EA85E2D58A057001C1D0B /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A79EA87D2D58A059001C1D0B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -89,9 +68,7 @@
 		A79EA8582D58A057001C1D0B = {
 			isa = PBXGroup;
 			children = (
-				A77C7A052EAE7126003A0838 /* Screenshots.xctestplan */,
 				A79EA8632D58A057001C1D0B /* CamperLogBook */,
-				A79EA8832D58A059001C1D0B /* CamperLogBookUITests */,
 				A7B1B3D22F56EB030000DBCC /* CamperLogBookTests */,
 				A79EA8622D58A057001C1D0B /* Products */,
 			);
@@ -101,7 +78,6 @@
 			isa = PBXGroup;
 			children = (
 				A79EA8612D58A057001C1D0B /* CamperLogBook.app */,
-				A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */,
 				A7B1B3D12F56EB030000DBCC /* CamperLogBookTests.xctest */,
 			);
 			name = Products;
@@ -132,29 +108,6 @@
 			productName = CamperLogBook;
 			productReference = A79EA8612D58A057001C1D0B /* CamperLogBook.app */;
 			productType = "com.apple.product-type.application";
-		};
-		A79EA87F2D58A059001C1D0B /* CamperLogBookUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = A79EA8902D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookUITests" */;
-			buildPhases = (
-				A79EA87C2D58A059001C1D0B /* Sources */,
-				A79EA87D2D58A059001C1D0B /* Frameworks */,
-				A79EA87E2D58A059001C1D0B /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				A79EA8822D58A059001C1D0B /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				A79EA8832D58A059001C1D0B /* CamperLogBookUITests */,
-			);
-			name = CamperLogBookUITests;
-			packageProductDependencies = (
-			);
-			productName = CamperLogBookUITests;
-			productReference = A79EA8802D58A059001C1D0B /* CamperLogBookUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		A7B1B3D02F56EB030000DBCC /* CamperLogBookTests */ = {
 			isa = PBXNativeTarget;
@@ -215,10 +168,6 @@
 					A79EA8602D58A057001C1D0B = {
 						CreatedOnToolsVersion = 16.2;
 					};
-					A79EA87F2D58A059001C1D0B = {
-						CreatedOnToolsVersion = 16.2;
-						TestTargetID = A79EA8602D58A057001C1D0B;
-					};
 					A7B1B3D02F56EB030000DBCC = {
 						CreatedOnToolsVersion = 26.3;
 						TestTargetID = A79EA8602D58A057001C1D0B;
@@ -240,7 +189,6 @@
 			projectRoot = "";
 			targets = (
 				A79EA8602D58A057001C1D0B /* CamperLogBook */,
-				A79EA87F2D58A059001C1D0B /* CamperLogBookUITests */,
 				A7B1B3D02F56EB030000DBCC /* CamperLogBookTests */,
 			);
 		};
@@ -248,13 +196,6 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		A79EA85F2D58A057001C1D0B /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A79EA87E2D58A059001C1D0B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -278,13 +219,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A79EA87C2D58A059001C1D0B /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		A7B1B3CD2F56EB030000DBCC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -295,11 +229,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		A79EA8822D58A059001C1D0B /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
-			targetProxy = A79EA8812D58A059001C1D0B /* PBXContainerItemProxy */;
-		};
 		A7B1B3D62F56EB030000DBCC /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
@@ -440,7 +369,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = CamperLogBook/CamperLogBookDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26.3.06;
+				CURRENT_PROJECT_VERSION = 26.3.07;
 				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -458,7 +387,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.6;
+				MARKETING_VERSION = 3.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -474,7 +403,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = CamperLogBook/CamperLogBookRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26.3.06;
+				CURRENT_PROJECT_VERSION = 26.3.07;
 				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -492,44 +421,12 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.6;
+				MARKETING_VERSION = 3.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		A79EA8912D58A059001C1D0B /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = CamperLogBook;
-			};
-			name = Debug;
-		};
-		A79EA8922D58A059001C1D0B /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBookUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = CamperLogBook;
 			};
 			name = Release;
 		};
@@ -596,15 +493,6 @@
 			buildConfigurations = (
 				A79EA88B2D58A059001C1D0B /* Debug */,
 				A79EA88C2D58A059001C1D0B /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		A79EA8902D58A059001C1D0B /* Build configuration list for PBXNativeTarget "CamperLogBookUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A79EA8912D58A059001C1D0B /* Debug */,
-				A79EA8922D58A059001C1D0B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
