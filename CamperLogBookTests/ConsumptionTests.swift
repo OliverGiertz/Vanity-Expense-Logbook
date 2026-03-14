@@ -4,6 +4,7 @@ import CoreData
 @testable import CamperLogBook
 
 @Suite("FuelConsumptionCalculator")
+@MainActor
 struct ConsumptionTests {
 
     // MARK: - Helpers
