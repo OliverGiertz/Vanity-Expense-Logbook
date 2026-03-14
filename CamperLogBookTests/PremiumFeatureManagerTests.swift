@@ -2,7 +2,6 @@ import Testing
 import Foundation
 @testable import CamperLogBook
 
-@available(iOS 15.0, *)
 @Suite("PremiumFeatureManager")
 @MainActor
 struct PremiumFeatureManagerTests {
