@@ -32,4 +32,3 @@ excluded:
   - vendor/
   - fastlane/
   - Pods/
-  - CamperLogBookUITests/SnapshotHelper.swift
