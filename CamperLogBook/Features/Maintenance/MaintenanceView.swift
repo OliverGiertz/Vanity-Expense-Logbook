@@ -43,8 +43,7 @@ struct MaintenanceView: View {
 
     @FetchRequest(
         entity: FuelEntry.entity(),
-        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)],
-        fetchLimit: 1
+        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)]
     ) private var lastFuelEntries: FetchedResults<FuelEntry>
 
     @State private var showAddSheet = false
