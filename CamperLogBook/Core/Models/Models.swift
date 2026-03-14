@@ -202,3 +202,17 @@ extension VehicleProfile {
         return request
     }
 }
+
+// MARK: - MaintenanceInterval
+
+@objc(MaintenanceInterval)
+public class MaintenanceInterval: NSManagedObject, Identifiable {
+    @NSManaged public var id: UUID?
+    @NSManaged public var name: String?
+    @NSManaged public var intervalKm: Int64
+    @NSManaged public var intervalMonths: Int64
+    @NSManaged public var lastServiceKm: Int64
+    @NSManaged public var lastServiceDate: Date?
+    @NSManaged public var notes: String?
+    @NSManaged public var createdAt: Date?
+}
