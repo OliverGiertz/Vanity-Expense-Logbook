@@ -32,6 +32,25 @@ Bei Fehler: Ursache beheben, Version nochmals bumpen, erneut pushen.
 ## Testing
 
 - **Lokal**: Xcode Tests vor jedem Push ausführen (`Cmd+U`)
-- **Xcode Cloud**: Läuft vor jedem App Store Release – vollständiger Test-Durchlauf + Archivierung
+- **Xcode Cloud**: Läuft bei jedem Release-Tag – vollständiger Test-Durchlauf + Archivierung + TestFlight
 
 Xcode-Tests sollen die zentrale Qualitätssicherung sein und kontinuierlich ausgebaut werden.
+
+## Release-Prozess (TestFlight / App Store)
+
+Normale Commits auf `main` lösen **keinen** Xcode Cloud Build aus.
+
+Ein Release wird ausschließlich über einen Git-Tag gestartet:
+
+```bash
+git tag v3.0.15
+git push origin v3.0.15
+```
+
+Xcode Cloud (Workflow "Release") reagiert auf Tags mit dem Muster `v*` und führt aus:
+1. Tests – iOS (zum Bestehen erforderlich)
+2. Analysieren – iOS (zum Bestehen erforderlich)
+3. Archivieren – iOS → App Store Connect
+4. TestFlight-interne Tests → Gruppe "Logbook Test"
+
+Der Tag-Name entspricht der `MARKETING_VERSION` des letzten Commits auf `main`.
