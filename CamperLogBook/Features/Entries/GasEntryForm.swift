@@ -86,34 +86,21 @@ struct GasEntryForm: View {
             showErrorAlert = true
             return
         }
-        let chosenLocation: CLLocation
-        if saveLocation {
-            if let autoLocation = locationManager.lastLocation {
-                chosenLocation = autoLocation
-            } else if let manual = selectedLocation {
-                chosenLocation = CLLocation(latitude: manual.latitude, longitude: manual.longitude)
-            } else {
-                chosenLocation = CLLocation(latitude: 0, longitude: 0)
-                ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in GasEntryForm")
-            }
-        } else {
-            chosenLocation = CLLocation(latitude: 0, longitude: 0)
-        }
+        let resolved = LocationHelper.resolve(
+            saveLocation: saveLocation,
+            locationManager: locationManager,
+            manualCoordinate: selectedLocation,
+            manualAddress: manualAddress
+        )
         let newEntry = GasEntry(context: viewContext)
         newEntry.id = UUID()
         newEntry.date = date
         newEntry.costPerBottle = cost
         newEntry.bottleCount = count
-        newEntry.latitude = chosenLocation.coordinate.latitude
-        newEntry.longitude = chosenLocation.coordinate.longitude
-        newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
-        if let pdfData = pdfData {
-            newEntry.receiptData = pdfData
-            newEntry.receiptType = "pdf"
-        } else if let image = receiptImage {
-            newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
-            newEntry.receiptType = "image"
-        }
+        newEntry.latitude = resolved.coordinate.latitude
+        newEntry.longitude = resolved.coordinate.longitude
+        newEntry.address = resolved.address
+        ReceiptHelper.apply(image: receiptImage, pdfData: pdfData, to: newEntry)
         do {
             try viewContext.save()
             ErrorLogger.shared.log(message: "GasEntry erfolgreich gespeichert in GasEntryForm")

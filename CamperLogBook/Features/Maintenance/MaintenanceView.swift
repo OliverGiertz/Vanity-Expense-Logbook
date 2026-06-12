@@ -150,13 +150,15 @@ private struct MaintenanceRow: View {
     let interval: MaintenanceInterval
     let currentKm: Int64
 
+    private static let urgencyThresholdKm: Int64 = 500
+
     private var urgency: MaintenanceUrgency {
         let kmUrgency: MaintenanceUrgency?
         if interval.intervalKm > 0 {
             let dueAt = interval.lastServiceKm + interval.intervalKm
             let remaining = dueAt - currentKm
             if remaining <= 0 { kmUrgency = .due }
-            else if remaining <= 500 { kmUrgency = .soon }
+            else if remaining <= Self.urgencyThresholdKm { kmUrgency = .soon }
             else { kmUrgency = .ok }
         } else { kmUrgency = nil }
 

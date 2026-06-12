@@ -51,64 +51,86 @@ struct CSVHelper {
     ///   - url: Die URL der CSV-Datei.
     ///   - context: Der NSManagedObjectContext.
     /// - Returns: Anzahl der importierten Einträge.
+    /// Importiert eine CSV-Datei und gibt die Anzahl importierter Einträge zurück.
+    /// Für detaillierte Fehlerinformationen zu übersprungenen Zeilen: `importCSVDetailed`.
     static func importCSV(for type: CSVHelperEntryType, from url: URL, in context: NSManagedObjectContext) throws -> Int {
-        // Inhalt lesen und evtl. BOM entfernen
+        try importCSVDetailed(for: type, from: url, in: context).imported
+    }
+
+    /// Importiert eine CSV-Datei und liefert neben der Import-Anzahl alle übersprungenen Zeilen
+    /// mit dem jeweiligen Grund, damit Aufrufer gezielt Feedback geben können.
+    static func importCSVDetailed(for type: CSVHelperEntryType, from url: URL, in context: NSManagedObjectContext) throws -> ImportResult {
         var content = try String(contentsOf: url, encoding: .utf8)
         if content.hasPrefix("\u{feff}") { content.removeFirst() }
         let rawLines = content.components(separatedBy: .newlines)
         let lines = rawLines.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        guard let headerLine = lines.first else { return 0 }
-        
-        // Trennzeichen automatisch erkennen (Export nutzt Tab)
+        guard let headerLine = lines.first else { return ImportResult(imported: 0, skippedRows: []) }
+
         let delimiter: Character
-        if headerLine.contains("\t") { delimiter = "\t" } else if headerLine.contains(";") { delimiter = ";" } else if headerLine.contains(",") { delimiter = "," } else { delimiter = "\t" }
-        
+        if headerLine.contains("\t") { delimiter = "\t" }
+        else if headerLine.contains(";") { delimiter = ";" }
+        else if headerLine.contains(",") { delimiter = "," }
+        else { delimiter = "\t" }
+
         let headers = headerLine.split(separator: delimiter).map { $0.trimmingCharacters(in: .whitespaces) }
         var importedCount = 0
-        
+        var skipped: [(row: [String: String], reason: String)] = []
+
         for line in lines.dropFirst() {
             let values = line.split(separator: delimiter, omittingEmptySubsequences: false).map { String($0) }
-            if values.count < headers.count { continue }
+            if values.count < headers.count {
+                skipped.append((row: ["_raw": line], reason: "Zu wenige Spalten (\(values.count) von \(headers.count))"))
+                continue
+            }
             var row = [String: String]()
             for (index, header) in headers.enumerated() where index < values.count {
                 row[String(header)] = values[index]
             }
-            // Alle Keys in Kleinbuchstaben
             let rowLower = Dictionary(uniqueKeysWithValues: row.map { ($0.key.lowercased(), $0.value) })
 
-            // Falls die CSV eine Spalte "entryType" enthält, importiere nur passende Zeilen
             if let entryTypeValue = rowLower["entrytype"], !entryTypeValue.isEmpty {
                 let typeString = entryTypeValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 let matchesType: Bool
                 switch type {
-                case .fuel:
-                    matchesType = typeString == "fuelentry" || typeString == "fuel"
-                case .gas:
-                    matchesType = typeString == "gasentry" || typeString == "gas"
-                case .other:
-                    matchesType = typeString == "otherentry" || typeString == "other"
+                case .fuel:  matchesType = typeString == "fuelentry" || typeString == "fuel"
+                case .gas:   matchesType = typeString == "gasentry"  || typeString == "gas"
+                case .other: matchesType = typeString == "otherentry" || typeString == "other"
                 }
-                if !matchesType { continue }
+                if !matchesType {
+                    skipped.append((row: rowLower, reason: "entryType '\(typeString)' passt nicht zu gesuchtem Typ"))
+                    continue
+                }
             }
-            switch type {
-            case .fuel:
-                if (try? importFuelEntry(from: rowLower, in: context)) != nil { importedCount += 1 }
-            case .gas:
-                if (try? importGasEntry(from: rowLower, in: context)) != nil { importedCount += 1 }
-            case .other:
-                if (try? importOtherEntry(from: rowLower, in: context)) != nil { importedCount += 1 }
+
+            do {
+                let imported: Bool
+                switch type {
+                case .fuel:  imported = (try importFuelEntry(from:  rowLower, in: context)) != nil
+                case .gas:   imported = (try importGasEntry(from:   rowLower, in: context)) != nil
+                case .other: imported = (try importOtherEntry(from: rowLower, in: context)) != nil
+                }
+                if imported { importedCount += 1 }
+                else { skipped.append((row: rowLower, reason: "Pflichtfeld fehlt (z.B. Datum)")) }
+            } catch {
+                skipped.append((row: rowLower, reason: error.localizedDescription))
             }
         }
         if context.hasChanges { try context.save() }
-        return importedCount
+        return ImportResult(imported: importedCount, skippedRows: skipped)
     }
 
-    // Zusammenfassung für gemischte Importe
+    // MARK: - Import result types
+
     struct ImportSummary {
         let fuel: Int
         let gas: Int
         let other: Int
         var total: Int { fuel + gas + other }
+    }
+
+    struct ImportResult {
+        let imported: Int
+        let skippedRows: [(row: [String: String], reason: String)]
     }
 
     /// Importiert eine CSV mit gemischten Einträgen. Entscheidet pro Zeile anhand der Spalte "entryType" (oder heuristisch), welcher Typ importiert wird.
@@ -402,42 +424,30 @@ struct CSVHelper {
                 let otherEntries = try bgContext.fetch(otherRequest)
                 var didChange = false
                 
-                for entry in fuelEntries {
-                    // Hier könnten bei Bedarf Korrekturen vorgenommen werden.
-                    // Aktuell wird nur geloggt, falls Werte 0 sind.
-                    if entry.latitude == 0 || entry.longitude == 0 {
-                        print("FuelEntry \(entry.id) hat fehlerhafte GPS-Daten: Lat=\(entry.latitude), Lon=\(entry.longitude)")
-                        // Hier könnte man einen Default-Wert setzen, z. B. den Nutzerstandort, falls verfügbar.
-                        // entry.latitude = <default value>
-                        // entry.longitude = <default value>
-                        didChange = true
-                    }
+                for entry in fuelEntries where entry.latitude == 0 || entry.longitude == 0 {
+                    ErrorLogger.shared.log(message: "FuelEntry \(entry.id) hat GPS (0,0)")
+                    didChange = true
                 }
-                for entry in gasEntries {
-                    if entry.latitude == 0 || entry.longitude == 0 {
-                        print("GasEntry \(entry.id) hat fehlerhafte GPS-Daten: Lat=\(entry.latitude), Lon=\(entry.longitude)")
-                        didChange = true
-                    }
+                for entry in gasEntries where entry.latitude == 0 || entry.longitude == 0 {
+                    ErrorLogger.shared.log(message: "GasEntry \(entry.id) hat GPS (0,0)")
+                    didChange = true
                 }
-                for entry in otherEntries {
-                    if entry.latitude == 0 || entry.longitude == 0 {
-                        print("OtherEntry \(entry.id) hat fehlerhafte GPS-Daten: Lat=\(entry.latitude), Lon=\(entry.longitude)")
-                        didChange = true
-                    }
+                for entry in otherEntries where entry.latitude == 0 || entry.longitude == 0 {
+                    ErrorLogger.shared.log(message: "OtherEntry \(entry.id) hat GPS (0,0)")
+                    didChange = true
                 }
-                
+
                 if didChange && bgContext.hasChanges {
                     try bgContext.save()
                 }
             } catch {
-                print("Fehler beim Korrigieren der GPS-Daten im Hintergrund: \(error)")
+                ErrorLogger.shared.log(error: error, additionalInfo: "correctGPSValues Hintergrundkontext")
             }
-            // Änderungen in den Hauptkontext übernehmen
             mainContext.perform {
                 do {
                     try mainContext.save()
                 } catch {
-                    print("Fehler beim Übernehmen der Hintergrundänderungen: \(error)")
+                    ErrorLogger.shared.log(error: error, additionalInfo: "correctGPSValues Hauptkontext")
                 }
             }
         }

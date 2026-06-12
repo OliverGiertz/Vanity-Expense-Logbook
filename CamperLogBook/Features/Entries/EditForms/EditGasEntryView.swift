@@ -101,26 +101,13 @@ struct EditGasEntryView: View {
         gasEntry.date = date
         gasEntry.costPerBottle = cost
         gasEntry.bottleCount = count
-        if let pdfData = pdfData {
-            gasEntry.receiptData = pdfData
-            gasEntry.receiptType = "pdf"
-        } else if let image = receiptImage {
-            gasEntry.receiptData = image.jpegData(compressionQuality: 0.8)
-            gasEntry.receiptType = "image"
-        }
-        if saveLocation {
-            if let loc = manualLocation {
-                gasEntry.latitude = loc.latitude
-                gasEntry.longitude = loc.longitude
-            }
-            if !manualAddress.isEmpty {
-                gasEntry.address = manualAddress
-            }
-        } else {
-            gasEntry.latitude = 0
-            gasEntry.longitude = 0
-            gasEntry.address = ""
-        }
+        ReceiptHelper.apply(image: receiptImage, pdfData: pdfData, to: gasEntry)
+        LocationHelper.applyEdit(
+            saveLocation: saveLocation,
+            manualLocation: manualLocation,
+            manualAddress: manualAddress,
+            to: gasEntry
+        )
         do {
             try viewContext.save()
             HapticFeedback.success()

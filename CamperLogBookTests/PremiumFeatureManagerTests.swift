@@ -8,6 +8,12 @@ struct PremiumFeatureManagerTests {
 
     private let featureID = "com.vanityontour.camperlogbook.icloudbackup"
 
+    init() {
+        // Ensure a clean UserDefaults state before each test so the shared
+        // PremiumFeatureManager singleton doesn't carry state between tests.
+        PremiumFeatureManager.shared.resetPurchases()
+    }
+
     // MARK: - resetPurchases
 
     @Test func resetPurchases_setsUnlockedToFalse() {

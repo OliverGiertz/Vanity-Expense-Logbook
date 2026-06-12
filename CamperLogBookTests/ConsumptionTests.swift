@@ -7,6 +7,9 @@ import CoreData
 @MainActor
 struct ConsumptionTests {
 
+    // Note: each test creates its own CoreDataTestStack (in-memory /dev/null store)
+    // so there is no shared mutable state requiring explicit setUp/tearDown.
+
     // MARK: - Helpers
 
     private func makeEntry(

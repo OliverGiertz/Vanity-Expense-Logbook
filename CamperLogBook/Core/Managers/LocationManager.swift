@@ -38,7 +38,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
                 guard let self = self else { return }
                 if let error = error {
-                    print("Reverse geocode error: \(error.localizedDescription)")
+                    ErrorLogger.shared.log(error: error, additionalInfo: "Reverse geocode in LocationManager")
                     DispatchQueue.main.async {
                         self.address = "Adresse nicht verfügbar"
                     }

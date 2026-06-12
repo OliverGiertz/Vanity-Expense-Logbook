@@ -60,8 +60,8 @@ struct PersistenceController {
     }
 
     private static func isMissingMappingModelMigrationError(_ error: NSError) -> Bool {
-        // NSMigrationMissingMappingModelError
-        let isMigrationError = error.domain == NSCocoaErrorDomain && error.code == 134140
+        let isMigrationError = error.domain == NSCocoaErrorDomain
+            && error.code == NSMigrationMissingMappingModelError
         let message = error.localizedDescription.lowercased()
         return isMigrationError || message.contains("missing mapping model")
     }

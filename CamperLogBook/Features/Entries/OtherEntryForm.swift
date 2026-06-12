@@ -127,13 +127,7 @@ struct OtherEntryForm: View {
         newEntry.category = categoryToSave
         newEntry.details = details
         newEntry.cost = costValue
-        if let image = receiptImage {
-            newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
-            newEntry.receiptType = "image"
-        } else if let pdf = pdfData {
-            newEntry.receiptData = pdf
-            newEntry.receiptType = "pdf"
-        }
+        ReceiptHelper.apply(image: receiptImage, pdfData: pdfData, to: newEntry)
 
         do {
             try viewContext.save()

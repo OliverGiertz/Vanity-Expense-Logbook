@@ -34,7 +34,7 @@ struct EditCategoryView: View {
             dismiss()
         } catch {
             HapticFeedback.error()
-            print("Error saving category: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Speichern Kategorie in EditCategoryView")
         }
     }
     
@@ -47,7 +47,7 @@ struct EditCategoryView: View {
             dismiss()
         } catch {
             HapticFeedback.error()
-            print("Error deleting category: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Löschen Kategorie in EditCategoryView")
         }
     }
 }

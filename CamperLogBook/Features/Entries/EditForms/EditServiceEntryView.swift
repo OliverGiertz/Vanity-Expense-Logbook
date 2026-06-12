@@ -122,24 +122,13 @@ struct EditServiceEntryView: View {
         } else {
             serviceEntry.freshWater = 0.0
         }
-        if let image = receiptImage {
-            serviceEntry.receiptData = image.jpegData(compressionQuality: 0.8)
-        } else if let pdf = pdfData {
-            serviceEntry.receiptData = pdf
-        }
-        if saveLocation {
-            if let loc = manualLocation {
-                serviceEntry.latitude = loc.latitude
-                serviceEntry.longitude = loc.longitude
-            }
-            if !manualAddress.isEmpty {
-                serviceEntry.address = manualAddress
-            }
-        } else {
-            serviceEntry.latitude = 0
-            serviceEntry.longitude = 0
-            serviceEntry.address = ""
-        }
+        ReceiptHelper.apply(image: receiptImage, pdfData: pdfData, to: serviceEntry)
+        LocationHelper.applyEdit(
+            saveLocation: saveLocation,
+            manualLocation: manualLocation,
+            manualAddress: manualAddress,
+            to: serviceEntry
+        )
         do {
             try viewContext.save()
             HapticFeedback.success()

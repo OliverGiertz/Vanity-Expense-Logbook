@@ -2,6 +2,11 @@ import SwiftUI
 import MapKit
 import CoreData
 
+private struct IdentifiableCoordinate: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
+}
+
 enum FilterPeriod: String, CaseIterable, Identifiable {
     case oneMonth = "1 Monat"
     case threeMonths = "3 Monate"
