@@ -1,6 +1,8 @@
 name: version-guard
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: ["**"]
 
@@ -12,19 +14,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
-      - name: Compare MARKETING_VERSION with base branch
+      - name: Compare MARKETING_VERSION
         env:
           BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
 
-          git fetch origin "$BASE_REF" --depth=1
-
-          BASE_FILE="$(mktemp)"
-          git show "origin/$BASE_REF:CamperLogBook.xcodeproj/project.pbxproj" > "$BASE_FILE"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch origin "$BASE_REF" --depth=1
+            BASE_FILE="$(mktemp)"
+            git show "origin/$BASE_REF:CamperLogBook.xcodeproj/project.pbxproj" > "$BASE_FILE"
+          else
+            BASE_FILE="$(mktemp)"
+            if ! git show "HEAD~1:CamperLogBook.xcodeproj/project.pbxproj" > "$BASE_FILE" 2>/dev/null; then
+              echo "No previous commit to compare – skipping version guard."
+              exit 0
+            fi
+          fi
 
           base_version=$(grep -m1 'MARKETING_VERSION = ' "$BASE_FILE" | sed -E 's/.*MARKETING_VERSION = ([^;]+);/\1/')
           head_version=$(grep -m1 'MARKETING_VERSION = ' CamperLogBook.xcodeproj/project.pbxproj | sed -E 's/.*MARKETING_VERSION = ([^;]+);/\1/')
@@ -39,7 +49,7 @@ jobs:
 
           if [ "$base_version" = "$head_version" ]; then
             echo "Version guard failed: MARKETING_VERSION was not bumped."
-            echo "Every merged change must increase app version."
+            echo "Every committed change must increase the app version."
             exit 1
           fi
 
