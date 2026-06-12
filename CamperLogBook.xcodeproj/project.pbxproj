@@ -6,6 +6,9 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A7B1B3D52F56EB030000DBCC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -97,11 +100,11 @@
 				A79EA85D2D58A057001C1D0B /* Sources */,
 				A79EA85E2D58A057001C1D0B /* Frameworks */,
 				A79EA85F2D58A057001C1D0B /* Resources */,
-				0142E0BBBFE645C49685C7B8 /* SwiftLint */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A758041F2FDBFC6900A04A8C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A79EA8632D58A057001C1D0B /* CamperLogBook */,
@@ -124,6 +127,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				A758041D2FDBFC5500A04A8C /* PBXTargetDependency */,
 				A7B1B3D62F56EB030000DBCC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
@@ -137,29 +141,6 @@
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		0142E0BBBFE645C49685C7B8 /* SwiftLint */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = SwiftLint;
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if which swiftlint > /dev/null; then\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXProject section */
 		A79EA8592D58A057001C1D0B /* Project object */ = {
@@ -187,6 +168,9 @@
 			);
 			mainGroup = A79EA8582D58A057001C1D0B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A75804172FDBFB7A00A04A8C /* XCRemoteSwiftPackageReference "SwiftLint" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A79EA8622D58A057001C1D0B /* Products */;
 			projectDirPath = "";
@@ -215,27 +199,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		0142E0BBBFE645C49685C7B8 /* SwiftLint */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = SwiftLint;
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if which swiftlint > /dev/null; then\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A79EA85D2D58A057001C1D0B /* Sources */ = {
@@ -255,6 +218,15 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A758041D2FDBFC5500A04A8C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = A758041C2FDBFC5500A04A8C /* SwiftLintBuildToolPlugin */;
+		};
+		A758041F2FDBFC6900A04A8C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = A758041E2FDBFC6900A04A8C /* SwiftLintBuildToolPlugin */;
+		};
+
 		A7B1B3D62F56EB030000DBCC /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A79EA8602D58A057001C1D0B /* CamperLogBook */;
@@ -395,7 +367,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = CamperLogBook/CamperLogBookDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26.3.014;
+				CURRENT_PROJECT_VERSION = 26.3.015;
 				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -413,7 +385,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.14;
+				MARKETING_VERSION = 3.0.15;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -429,7 +401,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = CamperLogBook/CamperLogBookRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26.3.014;
+				CURRENT_PROJECT_VERSION = 26.3.015;
 				DEVELOPMENT_ASSET_PATHS = "\"CamperLogBook/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -447,7 +419,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.14;
+				MARKETING_VERSION = 3.0.15;
 				PRODUCT_BUNDLE_IDENTIFIER = VanityOnTour.CamperLogBook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -533,6 +505,32 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A75804172FDBFB7A00A04A8C /* XCRemoteSwiftPackageReference "SwiftLint" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/realm/SwiftLint";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.63.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+
+		A758041C2FDBFC5500A04A8C /* SwiftLintBuildToolPlugin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A75804172FDBFB7A00A04A8C /* XCRemoteSwiftPackageReference "SwiftLint" */;
+			productName = "plugin:SwiftLintBuildToolPlugin";
+		};
+		A758041E2FDBFC6900A04A8C /* SwiftLintBuildToolPlugin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A75804172FDBFB7A00A04A8C /* XCRemoteSwiftPackageReference "SwiftLint" */;
+			productName = "plugin:SwiftLintBuildToolPlugin";
+		};
+
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A79EA8592D58A057001C1D0B /* Project object */;
 }
