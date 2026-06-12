@@ -26,7 +26,12 @@ struct AnalysisView: View {
     @State private var selectedChartType: ChartType = .bar
     @State private var data: [AnalysisData] = []
     @State private var isLoading: Bool = false
-    @State private var loadTask: Task<Void, Never>?
+
+    private struct LoadParams: Hashable {
+        let startDate: Date
+        let endDate: Date
+        let category: String?
+    }
 
     private static let periodDateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -193,15 +198,8 @@ struct AnalysisView: View {
             .sheet(isPresented: $showDateRangePicker) {
                 CustomDateRangeSheet(startDate: $startDate, endDate: $endDate)
             }
-            .onChange(of: showDateRangePicker) { _, isShowing in
-                if !isShowing && periodFilter == .custom { scheduleLoadData() }
-            }
-            .onChange(of: selectedCostTypes) { _, _ in scheduleLoadData() }
-            .onChange(of: selectedCategory) { _, _ in scheduleLoadData() }
-            .onAppear { scheduleLoadData() }
-            .onDisappear {
-                loadTask?.cancel()
-                loadTask = nil
+            .task(id: LoadParams(startDate: startDate, endDate: endDate, category: selectedCategory)) {
+                await loadData(start: startDate, end: endDate, category: selectedCategory)
             }
         }
     }
@@ -229,51 +227,34 @@ struct AnalysisView: View {
         case .custom:
             break
         }
-        scheduleLoadData()
     }
 
-    private func scheduleLoadData() {
-        loadTask?.cancel()
+    private func loadData(start: Date, end: Date, category: String?) async {
         isLoading = true
+        let context = PersistenceController.shared.container.newBackgroundContext()
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
 
-        let start = startDate
-        let end = endDate
-        let category = selectedCategory
-
-        loadTask = Task {
-            let context = PersistenceController.shared.container.newBackgroundContext()
-            context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-
-            do {
-                let aggregatedData = try await context.perform {
-                    var tempData: [String: [String: Double]] = [:]
-
-                    let fuel = try fetchFuelData(in: context, start: start, end: end)
-                    let gas = try fetchGasData(in: context, start: start, end: end)
-                    let service = try fetchServiceData(in: context, start: start, end: end)
-                    let other = try fetchOtherData(in: context, start: start, end: end, category: category)
-
-                    merge(type: "Tankbeleg", values: fuel, into: &tempData)
-                    merge(type: "Gaskosten", values: gas, into: &tempData)
-                    merge(type: "Ver-/Entsorgung", values: service, into: &tempData)
-                    merge(type: "Sonstige", values: other, into: &tempData)
-
-                    return buildAnalysisData(from: tempData)
-                }
-
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    data = aggregatedData
-                    isLoading = false
-                }
-            } catch {
-                ErrorLogger.shared.log(error: error, additionalInfo: "AnalysisView loadData failed")
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    data = []
-                    isLoading = false
-                }
+        do {
+            let aggregatedData = try await context.perform {
+                var tempData: [String: [String: Double]] = [:]
+                let fuel = try fetchFuelData(in: context, start: start, end: end)
+                let gas = try fetchGasData(in: context, start: start, end: end)
+                let service = try fetchServiceData(in: context, start: start, end: end)
+                let other = try fetchOtherData(in: context, start: start, end: end, category: category)
+                merge(type: "Tankbeleg", values: fuel, into: &tempData)
+                merge(type: "Gaskosten", values: gas, into: &tempData)
+                merge(type: "Ver-/Entsorgung", values: service, into: &tempData)
+                merge(type: "Sonstige", values: other, into: &tempData)
+                return buildAnalysisData(from: tempData)
             }
+            guard !Task.isCancelled else { return }
+            data = aggregatedData
+            isLoading = false
+        } catch {
+            ErrorLogger.shared.log(error: error, additionalInfo: "AnalysisView loadData failed")
+            guard !Task.isCancelled else { return }
+            data = []
+            isLoading = false
         }
     }
 

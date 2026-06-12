@@ -137,26 +137,13 @@ struct EditFuelEntryView: View {
         fuelEntry.costPerLiter = costValue
         let computedTotal = (Double(liters) ?? 0.0) * costValue
         fuelEntry.totalCost = computedTotal
-        if let pdfData = pdfData {
-            fuelEntry.receiptData = pdfData
-            fuelEntry.receiptType = "pdf"
-        } else if let image = receiptImage {
-            fuelEntry.receiptData = image.jpegData(compressionQuality: 0.8)
-            fuelEntry.receiptType = "image"
-        }
-        if saveLocation {
-            if let loc = manualLocation {
-                fuelEntry.latitude = loc.latitude
-                fuelEntry.longitude = loc.longitude
-            }
-            if !manualAddress.isEmpty {
-                fuelEntry.address = manualAddress
-            }
-        } else {
-            fuelEntry.latitude = 0
-            fuelEntry.longitude = 0
-            fuelEntry.address = ""
-        }
+        ReceiptHelper.apply(image: receiptImage, pdfData: pdfData, to: fuelEntry)
+        LocationHelper.applyEdit(
+            saveLocation: saveLocation,
+            manualLocation: manualLocation,
+            manualAddress: manualAddress,
+            to: fuelEntry
+        )
         do {
             try viewContext.save()
             HapticFeedback.success()

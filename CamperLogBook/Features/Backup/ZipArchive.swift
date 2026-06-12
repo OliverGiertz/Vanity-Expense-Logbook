@@ -359,20 +359,20 @@ class ZipArchive {
         let sourceSize = data.count
         let destinationSize = sourceSize + 1024
         var compressedData = Data(count: destinationSize)
-        // swiftlint:disable force_unwrapping
-        let result = compressedData.withUnsafeMutableBytes { destPtr in
-            data.withUnsafeBytes { srcPtr in
-                compression_encode_buffer(
-                    destPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
+        let result = compressedData.withUnsafeMutableBytes { destPtr -> Int in
+            data.withUnsafeBytes { srcPtr -> Int in
+                guard let destBase = destPtr.baseAddress,
+                      let srcBase = srcPtr.baseAddress else { return 0 }
+                return compression_encode_buffer(
+                    destBase.assumingMemoryBound(to: UInt8.self),
                     destinationSize,
-                    srcPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                    srcBase.assumingMemoryBound(to: UInt8.self),
                     sourceSize,
                     nil,
                     COMPRESSION_LZFSE
                 )
             }
         }
-        // swiftlint:enable force_unwrapping
         guard result > 0 else {
             throw ZipError.compressionFailed
         }
@@ -383,20 +383,20 @@ class ZipArchive {
     private static func decompressData(_ data: Data) throws -> Data {
         let estimatedSize = data.count * 5
         var decompressedData = Data(count: estimatedSize)
-        // swiftlint:disable force_unwrapping
-        let result = decompressedData.withUnsafeMutableBytes { destPtr in
-            data.withUnsafeBytes { srcPtr in
-                compression_decode_buffer(
-                    destPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
+        let result = decompressedData.withUnsafeMutableBytes { destPtr -> Int in
+            data.withUnsafeBytes { srcPtr -> Int in
+                guard let destBase = destPtr.baseAddress,
+                      let srcBase = srcPtr.baseAddress else { return 0 }
+                return compression_decode_buffer(
+                    destBase.assumingMemoryBound(to: UInt8.self),
                     estimatedSize,
-                    srcPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                    srcBase.assumingMemoryBound(to: UInt8.self),
                     data.count,
                     nil,
                     COMPRESSION_LZFSE
                 )
             }
         }
-        // swiftlint:enable force_unwrapping
         guard result > 0 else {
             throw ZipError.decompressionFailed
         }

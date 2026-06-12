@@ -2,6 +2,9 @@ import Foundation
 import CoreData
 
 /// Koordinator für das Backup und die Wiederherstellung von CoreData
+///
+/// Thread-safety: Alle NSManagedObjectContext-Zugriffe erfolgen ausschließlich
+/// über `context.perform { }`, daher ist die `@unchecked Sendable`-Markierung korrekt.
 class CoreDataBackupCoordinator: @unchecked Sendable {
     private let context: NSManagedObjectContext
 

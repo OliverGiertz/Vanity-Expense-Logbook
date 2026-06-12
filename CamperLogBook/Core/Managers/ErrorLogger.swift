@@ -1,74 +1,53 @@
-//
-//  ErrorLogger.swift
-//  CamperLogBook
-//
-//  Created by Oliver Giertz on 19.02.25.
-//
-
-
-//
-//  ErrorLogger.swift
-//  CamperLogBook
-//
-//  Erstellt am [Datum] von [Dein Name]
-//  Zentraler Logger für Fehler, der Fehler mit Zeitstempel in eine .log-Datei im Dokumentenverzeichnis schreibt.
-//
-
 import Foundation
 
 class ErrorLogger {
     static let shared = ErrorLogger()
     private let logFileName = "error.log"
-    
+
+    // Serial queue protects all file I/O from concurrent writes.
+    private let queue = DispatchQueue(label: "de.vanityontour.camperlogbook.errorlogger", qos: .utility)
+    private static let timestampFormatter: ISO8601DateFormatter = ISO8601DateFormatter()
+
     private var logFileURL: URL? {
-        let fm = FileManager.default
-        if let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
-            return docs.appendingPathComponent(logFileName)
-        }
-        return nil
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+            .appendingPathComponent(logFileName)
     }
-    
-    /// Loggt einen Fehler mit optionalen Zusatzinformationen.
+
     func log(error: Error, additionalInfo: String? = nil) {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-        var logEntry = "[\(timestamp)] Error: \(error.localizedDescription)"
-        if let info = additionalInfo {
-            logEntry += " | Info: \(info)"
-        }
-        logEntry += "\n"
-        append(logEntry: logEntry)
+        let timestamp = Self.timestampFormatter.string(from: Date())
+        var entry = "[\(timestamp)] Error: \(error.localizedDescription)"
+        if let info = additionalInfo { entry += " | Info: \(info)" }
+        entry += "\n"
+        append(logEntry: entry)
     }
-    
-    /// Loggt eine beliebige Nachricht.
+
     func log(message: String) {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-        let logEntry = "[\(timestamp)] \(message)\n"
-        append(logEntry: logEntry)
+        let timestamp = Self.timestampFormatter.string(from: Date())
+        append(logEntry: "[\(timestamp)] \(message)\n")
     }
-    
+
     private func append(logEntry: String) {
-        guard let url = logFileURL else { return }
-        if FileManager.default.fileExists(atPath: url.path) {
-            if let fileHandle = try? FileHandle(forWritingTo: url) {
-                fileHandle.seekToEndOfFile()
-                if let data = logEntry.data(using: .utf8) {
+        queue.async { [weak self] in
+            guard let self, let url = self.logFileURL else { return }
+            guard let data = logEntry.data(using: .utf8) else { return }
+            if FileManager.default.fileExists(atPath: url.path) {
+                if let fileHandle = try? FileHandle(forWritingTo: url) {
+                    fileHandle.seekToEndOfFile()
                     fileHandle.write(data)
+                    fileHandle.closeFile()
                 }
-                fileHandle.closeFile()
+            } else {
+                try? logEntry.write(to: url, atomically: true, encoding: .utf8)
             }
-        } else {
-            try? logEntry.write(to: url, atomically: true, encoding: .utf8)
         }
     }
-    
-    /// Liefert die URL der Logdatei.
-    func getLogFileURL() -> URL? {
-        return logFileURL
-    }
-    
-    /// Löscht den aktuellen Log.
+
+    func getLogFileURL() -> URL? { logFileURL }
+
     func clearLog() {
-        guard let url = logFileURL else { return }
-        try? "".write(to: url, atomically: true, encoding: .utf8)
+        queue.async { [weak self] in
+            guard let self, let url = self.logFileURL else { return }
+            try? "".write(to: url, atomically: true, encoding: .utf8)
+        }
     }
 }

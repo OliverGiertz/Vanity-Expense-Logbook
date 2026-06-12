@@ -131,7 +131,7 @@ struct ProfileView: View {
             HapticFeedback.success()
         } catch {
             HapticFeedback.error()
-            print("Error saving profile: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Speichern Profil in ProfileView")
         }
     }
     
@@ -147,7 +147,7 @@ struct ProfileView: View {
             HapticFeedback.success()
         } catch {
             HapticFeedback.error()
-            print("Error adding category: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Kategorie hinzufügen in ProfileView")
         }
     }
     
@@ -159,7 +159,7 @@ struct ProfileView: View {
             HapticFeedback.success()
         } catch {
             HapticFeedback.error()
-            print("Error deleting categories: \(error)")
+            ErrorLogger.shared.log(error: error, additionalInfo: "Kategorien löschen in ProfileView")
         }
     }
 }

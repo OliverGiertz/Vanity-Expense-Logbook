@@ -4,6 +4,9 @@ import UIKit
 
 /// Koordinator für das Backup und die Wiederherstellung von Beleg-Dokumenten.
 /// Nutzt einen privaten Core-Data-Kontext, damit sämtliche Operationen thread-safe bleiben.
+///
+/// Thread-safety: Alle NSManagedObjectContext-Zugriffe erfolgen ausschließlich
+/// über `workerContext.perform { }`, daher ist die `@unchecked Sendable`-Markierung korrekt.
 class ReceiptBackupCoordinator: @unchecked Sendable {
     private let workerContext: NSManagedObjectContext
 
@@ -33,13 +36,8 @@ class ReceiptBackupCoordinator: @unchecked Sendable {
                         let entryId = entry.value(forKey: "id") as? UUID ?? UUID()
                         var fileName = "\(entityName)_\(entryId.uuidString)"
 
-                        if let receiptType = entry.value(forKey: "receiptType") as? String {
-                            fileName += receiptType == "pdf" ? ".pdf" : ".jpg"
-                        } else if UIImage(data: receiptData) != nil {
-                            fileName += ".jpg"
-                        } else {
-                            fileName += ".pdf"
-                        }
+                        fileName += Self.fileExtension(for: receiptData,
+                                                             receiptType: entry.value(forKey: "receiptType") as? String)
 
                         let fileURL = directoryURL.appendingPathComponent(fileName)
                         try receiptData.write(to: fileURL)
@@ -82,6 +80,19 @@ class ReceiptBackupCoordinator: @unchecked Sendable {
                 try workerContext.save()
             }
         }
+    }
+
+    /// Determines the file extension for receipt data from its stored type or file-header magic bytes.
+    /// Avoids loading the full image into memory just to detect its type.
+    private static func fileExtension(for data: Data, receiptType: String?) -> String {
+        if let type = receiptType {
+            return type == "pdf" ? ".pdf" : ".jpg"
+        }
+        // JPEG magic bytes: FF D8
+        if data.prefix(2).elementsEqual([0xFF, 0xD8]) { return ".jpg" }
+        // PDF magic bytes: %PDF (25 50 44 46)
+        if data.prefix(4).elementsEqual([0x25, 0x50, 0x44, 0x46]) { return ".pdf" }
+        return ".jpg"
     }
 
     /// Aktualisiert die Belegdaten eines Eintrags

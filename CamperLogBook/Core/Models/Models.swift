@@ -1,8 +1,30 @@
 import Foundation
 import CoreData
 
+// MARK: - LocatableEntry
+
+/// Common GPS-rounding logic for all entry types that store coordinates.
+/// All @NSManaged properties are inherited; `willSave()` must call `updateRoundedCoordinates()`.
+protocol LocatableEntry: NSManagedObject {
+    var latitude: Double { get set }
+    var longitude: Double { get set }
+    var roundedLatitude: Double { get set }
+    var roundedLongitude: Double { get set }
+}
+
+extension LocatableEntry {
+    static var coordinatePrecision: Double { 10_000 }
+
+    func updateRoundedCoordinates() {
+        let newLat = (latitude * Self.coordinatePrecision).rounded() / Self.coordinatePrecision
+        let newLon = (longitude * Self.coordinatePrecision).rounded() / Self.coordinatePrecision
+        if roundedLatitude != newLat { roundedLatitude = newLat }
+        if roundedLongitude != newLon { roundedLongitude = newLon }
+    }
+}
+
 // MARK: - FuelEntry (Tankbeleg)
-public class FuelEntry: NSManagedObject, Identifiable {
+public class FuelEntry: NSManagedObject, Identifiable, LocatableEntry {
     @NSManaged public var id: UUID
     @NSManaged public var date: Date
     @NSManaged public var isDiesel: Bool
@@ -57,19 +79,12 @@ extension FuelEntry {
     
     public override func willSave() {
         super.willSave()
-        let newRoundedLat = (latitude * 10000).rounded() / 10000
-        let newRoundedLon = (longitude * 10000).rounded() / 10000
-        if roundedLatitude != newRoundedLat {
-            roundedLatitude = newRoundedLat
-        }
-        if roundedLongitude != newRoundedLon {
-            roundedLongitude = newRoundedLon
-        }
+        updateRoundedCoordinates()
     }
 }
 
 // MARK: - GasEntry (Gaskosten)
-public class GasEntry: NSManagedObject, Identifiable {
+public class GasEntry: NSManagedObject, Identifiable, LocatableEntry {
     @NSManaged public var id: UUID
     @NSManaged public var date: Date
     @NSManaged public var costPerBottle: Double
@@ -96,19 +111,12 @@ extension GasEntry {
     
     public override func willSave() {
         super.willSave()
-        let newRoundedLat = (latitude * 10000).rounded() / 10000
-        let newRoundedLon = (longitude * 10000).rounded() / 10000
-        if roundedLatitude != newRoundedLat {
-            roundedLatitude = newRoundedLat
-        }
-        if roundedLongitude != newRoundedLon {
-            roundedLongitude = newRoundedLon
-        }
+        updateRoundedCoordinates()
     }
 }
 
 // MARK: - ServiceEntry (Ver- und Entsorgung)
-public class ServiceEntry: NSManagedObject, Identifiable {
+public class ServiceEntry: NSManagedObject, Identifiable, LocatableEntry {
     @NSManaged public var id: UUID
     @NSManaged public var date: Date
     @NSManaged public var isSupply: Bool
@@ -136,19 +144,12 @@ extension ServiceEntry {
     
     public override func willSave() {
         super.willSave()
-        let newRoundedLat = (latitude * 10000).rounded() / 10000
-        let newRoundedLon = (longitude * 10000).rounded() / 10000
-        if roundedLatitude != newRoundedLat {
-            roundedLatitude = newRoundedLat
-        }
-        if roundedLongitude != newRoundedLon {
-            roundedLongitude = newRoundedLon
-        }
+        updateRoundedCoordinates()
     }
 }
 
 // MARK: - OtherEntry (Sonstige Kosten)
-public class OtherEntry: NSManagedObject, Identifiable {
+public class OtherEntry: NSManagedObject, Identifiable, LocatableEntry {
     @NSManaged public var id: UUID
     @NSManaged public var date: Date
     @NSManaged public var category: String
@@ -176,14 +177,7 @@ extension OtherEntry {
     
     public override func willSave() {
         super.willSave()
-        let newRoundedLat = (latitude * 10000).rounded() / 10000
-        let newRoundedLon = (longitude * 10000).rounded() / 10000
-        if roundedLatitude != newRoundedLat {
-            roundedLatitude = newRoundedLat
-        }
-        if roundedLongitude != newRoundedLon {
-            roundedLongitude = newRoundedLon
-        }
+        updateRoundedCoordinates()
     }
 }
 

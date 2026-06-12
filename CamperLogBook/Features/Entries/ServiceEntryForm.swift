@@ -100,38 +100,25 @@ struct ServiceEntryForm: View {
             return
         }
 
-        let chosenLocation: CLLocation
-        if saveLocation {
-            if let autoLocation = locationManager.lastLocation {
-                chosenLocation = autoLocation
-            } else if let manualLocation = selectedLocation {
-                chosenLocation = CLLocation(latitude: manualLocation.latitude, longitude: manualLocation.longitude)
-            } else {
-                chosenLocation = CLLocation(latitude: 0, longitude: 0)
-                ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in ServiceEntryForm")
-            }
-        } else {
-            chosenLocation = CLLocation(latitude: 0, longitude: 0)
-        }
+        let resolved = LocationHelper.resolve(
+            saveLocation: saveLocation,
+            locationManager: locationManager,
+            manualCoordinate: selectedLocation,
+            manualAddress: manualAddress
+        )
         let newEntry = ServiceEntry(context: viewContext)
         newEntry.id = UUID()
         newEntry.date = date
         newEntry.isSupply = isSupply
         newEntry.isDisposal = isDisposal
         newEntry.cost = costValue
-        newEntry.latitude = chosenLocation.coordinate.latitude
-        newEntry.longitude = chosenLocation.coordinate.longitude
-        newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
-        if isSupply {
-            newEntry.freshWater = Double(freshWaterText.replacingOccurrences(of: ",", with: ".")) ?? 0.0
-        } else {
-            newEntry.freshWater = 0.0
-        }
-        if let image = receiptImage {
-            newEntry.receiptData = image.jpegData(compressionQuality: 0.8)
-        } else if let pdf = pdfData {
-            newEntry.receiptData = pdf
-        }
+        newEntry.latitude = resolved.coordinate.latitude
+        newEntry.longitude = resolved.coordinate.longitude
+        newEntry.address = resolved.address
+        newEntry.freshWater = isSupply
+            ? (Double(freshWaterText.replacingOccurrences(of: ",", with: ".")) ?? 0.0)
+            : 0.0
+        ReceiptHelper.apply(image: receiptImage, pdfData: pdfData, to: newEntry)
         do {
             try viewContext.save()
             HapticFeedback.success()

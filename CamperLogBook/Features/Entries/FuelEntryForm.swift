@@ -76,48 +76,9 @@ struct FuelEntryForm: View {
                         .submitLabel(.done)
                         .onSubmit { KeyboardHelper.hideKeyboard() }
                 }
-                Section(header: Text("Kraftstoffauswahl")) {
-                    Picker("Kraftstoffart", selection: $fuelType) {
-                        ForEach(FuelEntry.fuelTypes, id: \.self) { type in
-                            Text(type).tag(type)
-                        }
-                    }
-                    .onChange(of: fuelType) { _, _ in
-                        HapticFeedback.selectionChanged()
-                    }
-                }
-                Section(header: Text("Fahrzeuginformationen")) {
-                    TextField("Aktueller KM Stand", text: $currentKm)
-                        .keyboardType(.numberPad)
-                        .submitLabel(.done)
-                        .onSubmit { KeyboardHelper.hideKeyboard() }
-                        .onChange(of: currentKm) { _, _ in updateKmDifference() }
-                    if let diff = kmDifference {
-                        FormMetricRow(label: "Gefahrene Kilometer:", value: "\(diff) km")
-                    }
-                    if let consumption = consumptionPer100km {
-                        FormMetricRow(label: "Verbrauch pro 100km:", value: String(format: "%.2f L", consumption))
-                    }
-                }
-                Section(header: Text("Tankdaten")) {
-                    TextField("Getankte Liter", text: $liters)
-                        .keyboardType(.decimalPad)
-                        .submitLabel(.done)
-                        .onSubmit { KeyboardHelper.hideKeyboard() }
-                        .onChange(of: liters) { _, _ in computeTotalCost() }
-                    TextField("Kosten pro Liter", text: $costPerLiter)
-                        .keyboardType(.decimalPad)
-                        .submitLabel(.done)
-                        .onSubmit { KeyboardHelper.hideKeyboard() }
-                        .onChange(of: costPerLiter) { _, _ in computeTotalCost() }
-                    TextField("Gesamtkosten", text: $totalCost).disabled(true)
-                    Toggle("Volltankung", isOn: $isFull)
-                    if !isFull {
-                        Text("Teilbetankung – kein Verbrauch berechnet")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
+                fuelTypeSection
+                vehicleInfoSection
+                tankDataSection
                 LocationSection(
                     saveLocation: $saveLocation,
                     manualAddress: manualAddress,
@@ -139,6 +100,55 @@ struct FuelEntryForm: View {
         .receiptPickerSheet(receiptSource: $receiptSource, receiptImage: $receiptImage, pdfData: $pdfData)
         .errorAlert(isPresented: $showErrorAlert, message: errorAlertMessage, showMailView: $showMailView)
         .toast(isPresented: $showSuccessToast, title: "Eintrag gespeichert", subtitle: successSubtitle, systemImage: "checkmark.circle.fill", duration: 2.4, alignment: .bottom)
+    }
+
+    @ViewBuilder private var fuelTypeSection: some View {
+        Section(header: Text("Kraftstoffauswahl")) {
+            Picker("Kraftstoffart", selection: $fuelType) {
+                ForEach(FuelEntry.fuelTypes, id: \.self) { type in
+                    Text(type).tag(type)
+                }
+            }
+            .onChange(of: fuelType) { _, _ in HapticFeedback.selectionChanged() }
+        }
+    }
+
+    @ViewBuilder private var vehicleInfoSection: some View {
+        Section(header: Text("Fahrzeuginformationen")) {
+            TextField("Aktueller KM Stand", text: $currentKm)
+                .keyboardType(.numberPad)
+                .submitLabel(.done)
+                .onSubmit { KeyboardHelper.hideKeyboard() }
+                .onChange(of: currentKm) { _, _ in updateKmDifference() }
+            if let diff = kmDifference {
+                FormMetricRow(label: "Gefahrene Kilometer:", value: "\(diff) km")
+            }
+            if let consumption = consumptionPer100km {
+                FormMetricRow(label: "Verbrauch pro 100km:", value: String(format: "%.2f L", consumption))
+            }
+        }
+    }
+
+    @ViewBuilder private var tankDataSection: some View {
+        Section(header: Text("Tankdaten")) {
+            TextField("Getankte Liter", text: $liters)
+                .keyboardType(.decimalPad)
+                .submitLabel(.done)
+                .onSubmit { KeyboardHelper.hideKeyboard() }
+                .onChange(of: liters) { _, _ in computeTotalCost() }
+            TextField("Kosten pro Liter", text: $costPerLiter)
+                .keyboardType(.decimalPad)
+                .submitLabel(.done)
+                .onSubmit { KeyboardHelper.hideKeyboard() }
+                .onChange(of: costPerLiter) { _, _ in computeTotalCost() }
+            TextField("Gesamtkosten", text: $totalCost).disabled(true)
+            Toggle("Volltankung", isOn: $isFull)
+            if !isFull {
+                Text("Teilbetankung – kein Verbrauch berechnet")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
     }
 
     private func computeTotalCost() {
@@ -194,25 +204,29 @@ struct FuelEntryForm: View {
 
     private func saveEntry() {
         errorMessage = nil
-        let costText = totalCost.replacingOccurrences(of: ",", with: ".")
-        guard let costValue = Double(costText) else {
+
+        guard !currentKm.isEmpty,
+              let kmValue = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) else {
             HapticFeedback.error()
+            errorAlertMessage = "Bitte gib einen gültigen Kilometerstand ein."
+            showErrorAlert = true
+            isLoading = false
             return
         }
 
-        let chosenLocation: CLLocation
-        if saveLocation {
-            if let autoLocation = locationManager.lastLocation {
-                chosenLocation = autoLocation
-            } else if let manual = selectedLocation {
-                chosenLocation = CLLocation(latitude: manual.latitude, longitude: manual.longitude)
-            } else {
-                chosenLocation = CLLocation(latitude: 0, longitude: 0)
-                ErrorLogger.shared.log(message: "Kein Standort ermittelt – Standardkoordinaten (0,0) verwendet in FuelEntryForm")
-            }
-        } else {
-            chosenLocation = CLLocation(latitude: 0, longitude: 0)
+        let costText = totalCost.replacingOccurrences(of: ",", with: ".")
+        guard let costValue = Double(costText) else {
+            HapticFeedback.error()
+            isLoading = false
+            return
         }
+
+        let resolved = LocationHelper.resolve(
+            saveLocation: saveLocation,
+            locationManager: locationManager,
+            manualCoordinate: selectedLocation,
+            manualAddress: manualAddress
+        )
 
         let newEntry = FuelEntry(context: viewContext)
         newEntry.id = UUID()
@@ -220,23 +234,16 @@ struct FuelEntryForm: View {
         newEntry.fuelType = fuelType
         newEntry.isDiesel = (fuelType == "Diesel")
         newEntry.isAdBlue = (fuelType == "AdBlue")
-        newEntry.currentKm = Int64(currentKm.replacingOccurrences(of: ",", with: ".")) ?? 0
+        newEntry.currentKm = kmValue
         newEntry.liters = Double(liters.replacingOccurrences(of: ",", with: ".")) ?? 0.0
         newEntry.costPerLiter = Double(costPerLiter.replacingOccurrences(of: ",", with: ".")) ?? 0.0
         newEntry.totalCost = costValue
-        newEntry.latitude = chosenLocation.coordinate.latitude
-        newEntry.longitude = chosenLocation.coordinate.longitude
-        newEntry.address = saveLocation ? (!manualAddress.isEmpty ? manualAddress : locationManager.address) : ""
+        newEntry.latitude = resolved.coordinate.latitude
+        newEntry.longitude = resolved.coordinate.longitude
+        newEntry.address = resolved.address
         newEntry.isFull = isFull
 
-        if let pdf = pdfData {
-            newEntry.receiptData = pdf
-            newEntry.receiptType = "pdf"
-        } else if let image = receiptImage {
-            let compressedImage = image.compressedForStorage()
-            newEntry.receiptData = compressedImage.jpegData(compressionQuality: 0.7)
-            newEntry.receiptType = "image"
-        }
+        ReceiptHelper.apply(image: receiptImage, pdfData: pdfData, to: newEntry)
 
         // Only calculate consumption for full fills
         if isFull {

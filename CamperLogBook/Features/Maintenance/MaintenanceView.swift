@@ -42,9 +42,11 @@ struct MaintenanceView: View {
     ) private var intervals: FetchedResults<MaintenanceInterval>
 
     @FetchRequest(
-        entity: FuelEntry.entity(),
-        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)],
-        fetchLimit: 1
+        fetchRequest: {
+            let req = FuelEntry.fetchAll()
+            req.fetchLimit = 1
+            return req
+        }()
     ) private var lastFuelEntries: FetchedResults<FuelEntry>
 
     @State private var showAddSheet = false
@@ -151,13 +153,15 @@ private struct MaintenanceRow: View {
     let interval: MaintenanceInterval
     let currentKm: Int64
 
+    private static let urgencyThresholdKm: Int64 = 500
+
     private var urgency: MaintenanceUrgency {
         let kmUrgency: MaintenanceUrgency?
         if interval.intervalKm > 0 {
             let dueAt = interval.lastServiceKm + interval.intervalKm
             let remaining = dueAt - currentKm
             if remaining <= 0 { kmUrgency = .due }
-            else if remaining <= 500 { kmUrgency = .soon }
+            else if remaining <= Self.urgencyThresholdKm { kmUrgency = .soon }
             else { kmUrgency = .ok }
         } else { kmUrgency = nil }
 

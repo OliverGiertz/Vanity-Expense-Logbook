@@ -88,13 +88,7 @@ struct EditOtherEntryView: View {
         otherEntry.category = category
         otherEntry.details = details
         otherEntry.cost = costValue
-        if let pdfData = pdfData {
-            otherEntry.receiptData = pdfData
-            otherEntry.receiptType = "pdf"
-        } else if let image = receiptImage {
-            otherEntry.receiptData = image.jpegData(compressionQuality: 0.8)
-            otherEntry.receiptType = "image"
-        }
+        ReceiptHelper.apply(image: receiptImage, pdfData: pdfData, to: otherEntry)
         do {
             try viewContext.save()
             HapticFeedback.success()
