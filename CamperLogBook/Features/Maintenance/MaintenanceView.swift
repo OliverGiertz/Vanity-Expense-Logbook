@@ -42,11 +42,8 @@ struct MaintenanceView: View {
     ) private var intervals: FetchedResults<MaintenanceInterval>
 
     @FetchRequest(
-        fetchRequest: {
-            let req = FuelEntry.fetchAll()
-            req.fetchLimit = 1
-            return req
-        }()
+        entity: FuelEntry.entity(),
+        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)]
     ) private var lastFuelEntries: FetchedResults<FuelEntry>
 
     @State private var showAddSheet = false

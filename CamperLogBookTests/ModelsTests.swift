@@ -3,6 +3,7 @@ import CoreData
 @testable import CamperLogBook
 
 @Suite("Models")
+@MainActor
 struct ModelsTests {
 
     // MARK: - willSave GPS Rounding

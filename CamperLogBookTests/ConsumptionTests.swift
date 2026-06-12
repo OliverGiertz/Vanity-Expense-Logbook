@@ -4,6 +4,7 @@ import CoreData
 @testable import CamperLogBook
 
 @Suite("FuelConsumptionCalculator")
+@MainActor
 struct ConsumptionTests {
 
     // Note: each test creates its own CoreDataTestStack (in-memory /dev/null store)

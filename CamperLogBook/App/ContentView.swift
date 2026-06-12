@@ -11,11 +11,8 @@ struct ContentView: View {
     ) private var allIntervals: FetchedResults<MaintenanceInterval>
 
     @FetchRequest(
-        fetchRequest: {
-            let req = FuelEntry.fetchAll()
-            req.fetchLimit = 1
-            return req
-        }()
+        entity: FuelEntry.entity(),
+        sortDescriptors: [NSSortDescriptor(keyPath: \FuelEntry.date, ascending: false)]
     ) private var lastFuel: FetchedResults<FuelEntry>
 
     private var currentKm: Int64 { lastFuel.first?.currentKm ?? 0 }

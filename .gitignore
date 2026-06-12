@@ -41,3 +41,8 @@ vendor/bundle/
 *.zip
 *.bak
 tmp/
+
+# Local dev scripts (not part of the project)
+test.sh
+scripts/
+logs/

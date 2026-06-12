@@ -1,10 +1,10 @@
 import WidgetKit
 import SwiftUI
 
-// NOTE: Diese Datei ist für das separate Widget-Extension-Target bestimmt.
-// Anleitung zur Einrichtung: siehe WIDGET_SETUP.md in diesem Ordner.
-
-@main
+// NOTE: Diese Datei liegt im Haupt-App-Bundle und wird von dort aus dem
+// Widget Extension Target hinzugefügt (Target Membership).
+// @main darf NICHT hier stehen – es wird im Widget Extension Target über
+// eine separate WidgetBundle-Datei gesetzt. Siehe WIDGET_SETUP.md.
 struct ExpenseWidget: Widget {
     let kind: String = "ExpenseWidget"
 
